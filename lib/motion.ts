@@ -2,8 +2,8 @@ import type { Transition } from "motion/react"
 
 export const springEnter: Transition = {
   type: "spring",
-  stiffness: 280,
-  damping: 30,
+  stiffness: 500,
+  damping: 40,
   mass: 1,
 }
 

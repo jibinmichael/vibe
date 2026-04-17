@@ -43,7 +43,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 - Row buttons are placeholders and do not navigate yet; wire them to real routes when chat history exists.
 - Collapsed width hides label text via opacity but keeps DOM nodes—screen readers still encounter text unless you add visibility handling in a future iteration.
 - The expand/collapse control lives **inside** the sidebar header row (chevron top-right when expanded, centered when collapsed). It replaces the old standalone `AppSidebarToggle` used from `ChatTopBar`, which has been removed.
-- The rail is distinguished from the main pane with **`bg-muted/40`** only—no `border-r` or drop shadow.
+- The rail is distinguished from the main pane **only by a subtle drop shadow** on its right edge—no background tint and no `border-r`.
+- The sidebar uses the same background color as the main area. Its distinction is carried entirely by the drop shadow on its right edge. If you adjust app-level theming, verify the shadow remains visible in both light and dark modes.
 
 ## Accessibility
 
