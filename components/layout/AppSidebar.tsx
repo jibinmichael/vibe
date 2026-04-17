@@ -16,7 +16,8 @@ export function AppSidebar() {
       initial={false}
       animate={{ width: expanded ? SIDEBAR_EXPANDED_WIDTH : SIDEBAR_COLLAPSED_WIDTH }}
       transition={springEnter}
-      className="bg-muted/40 flex flex-shrink-0 flex-col overflow-hidden"
+      className="flex flex-shrink-0 flex-col overflow-hidden"
+      style={{ boxShadow: "1px 0 0 rgba(0,0,0,0.05), 2px 0 8px -2px rgba(0,0,0,0.04)" }}
     >
       <div className={`flex px-2 pt-2 pb-1 ${expanded ? "justify-end" : "justify-center"}`}>
         <button
