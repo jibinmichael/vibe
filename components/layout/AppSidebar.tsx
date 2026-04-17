@@ -9,16 +9,46 @@ const SIDEBAR_EXPANDED_WIDTH = 220
 const SIDEBAR_COLLAPSED_WIDTH = 56
 
 export function AppSidebar() {
-  const { expanded } = useSidebar()
+  const { expanded, toggle } = useSidebar()
 
   return (
     <motion.aside
       initial={false}
       animate={{ width: expanded ? SIDEBAR_EXPANDED_WIDTH : SIDEBAR_COLLAPSED_WIDTH }}
       transition={springEnter}
-      className="bg-background flex flex-shrink-0 flex-col overflow-hidden border-r"
-      style={{ boxShadow: "1px 0 0 rgba(0,0,0,0.02), 4px 0 16px rgba(0,0,0,0.02)" }}
+      className="bg-muted/40 flex flex-shrink-0 flex-col overflow-hidden"
     >
+      <div className={`flex px-2 pt-2 pb-1 ${expanded ? "justify-end" : "justify-center"}`}>
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
+          className="text-muted-foreground hover:bg-accent flex h-7 w-7 items-center justify-center rounded-md transition-colors"
+        >
+          {expanded ? (
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path
+                d="M9 3l-4 4 4 4"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path
+                d="M5 3l4 4-4 4"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
+        </button>
+      </div>
+
       <div className="flex items-center gap-2.5 px-3 py-3">
         <div className="bg-foreground/90 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-sm">
           <span className="text-background text-[10px] font-semibold">v</span>

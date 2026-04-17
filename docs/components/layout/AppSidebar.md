@@ -42,11 +42,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
 - Row buttons are placeholders and do not navigate yet; wire them to real routes when chat history exists.
 - Collapsed width hides label text via opacity but keeps DOM nodes—screen readers still encounter text unless you add visibility handling in a future iteration.
+- The expand/collapse control lives **inside** the sidebar header row (chevron top-right when expanded, centered when collapsed). It replaces the old standalone `AppSidebarToggle` used from `ChatTopBar`, which has been removed.
+- The rail is distinguished from the main pane with **`bg-muted/40`** only—no `border-r` or drop shadow.
 
 ## Accessibility
 
 - Sidebar rows are native `<button>` elements for keyboard activation.
 - Provide real navigation semantics when links replace static rows (e.g., `aria-current` for active chat).
+- The sidebar toggle is a `<button>` with `aria-label` “Collapse sidebar” / “Expand sidebar” matching the next action.
 
 ## Related
 

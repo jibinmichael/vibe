@@ -46,7 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 ## Gotchas
 
 - `AppShell` is a client component because it depends on `SidebarProvider`; keep heavy server-only logic in child pages, not inside the shell itself.
-- The shell uses `h-screen` and `overflow-hidden`; long pages must scroll inside `main` children (e.g. chat transcript area), not on `body`.
+- The shell uses `h-screen` and `overflow-hidden`; long pages must scroll inside `main` children, not on `body`.
 
 ## Accessibility
 
