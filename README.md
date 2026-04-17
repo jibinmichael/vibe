@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# vibe
 
-## Getting Started
+A Next.js 16 web application built with React 19, Tailwind CSS v4, and shadcn/ui.
 
-First, run the development server:
+## Prerequisites
+
+- **Node.js 20 LTS** — check with `node -v`
+- **pnpm 10+** — install with `npm install -g pnpm`, verify with `pnpm -v`
+- **Git** — check with `git --version`
+
+## Quickstart
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+git clone https://github.com/jibinmichael/vibe.git
+cd vibe
+pnpm install
+cp .env.example .env.local
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | What it does |
+|---|---|
+| `pnpm dev` | Start the dev server with Turbopack |
+| `pnpm build` | Production build |
+| `pnpm start` | Run the production build locally |
+| `pnpm lint` | Run ESLint |
+| `pnpm typecheck` | Run TypeScript without emitting files |
+| `pnpm format` | Format all files with Prettier |
+| `pnpm format:check` | Check formatting without writing (used in CI) |
 
-## Learn More
+## Project structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/                  Next.js App Router pages, layouts, route handlers
+components/
+  ui/                 shadcn/ui primitives (never renamed, see CLAUDE.md §4)
+  <domain>/           usecase-specific components (see CLAUDE.md §3)
+  shared/             components used in 2+ domains
+hooks/                Custom React hooks
+lib/                  Utilities, shared non-React logic
+types/                Shared TypeScript types
+public/               Static assets
+docs/                 Project documentation (Phase 9)
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Conventions
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+This project follows strict conventions documented in CLAUDE.md. All AI coding assistants (Cursor, Claude Code, etc.) read this file automatically on every session. Humans should read it too.
 
-## Deploy on Vercel
+Key rules:
+- Component names are usecase-based (`PricingPlanCard`, not `Card`)
+- Never modify files in `components/ui/` (shadcn vendored code)
+- Server Components by default; `"use client"` only when needed
+- No secrets in the repo, ever
+- Every change goes through a pull request — no direct commits to `main`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Tooling
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **TypeScript** — strict mode, with `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`
+- **ESLint** — Next.js config
+- **Prettier** — formatting, with Tailwind class sorting
+- **Husky** — pre-commit runs lint-staged; commit-msg enforces Conventional Commits
+- **GitHub Actions CI** — runs typecheck, lint, format check, and build on every PR. Required to pass before merge.
+
+## Contributing
+
+1. `git checkout main && git pull`
+2. `git checkout -b <type>/<short-description>` (e.g. `feat/pricing-page`)
+3. Make changes. Commit messages follow Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `refactor:`, etc.)
+4. `git push -u origin <branch-name>`
+5. Open a pull request against `main`
+6. CI must pass before merge is allowed
+7. Squash and merge; delete the branch
+
+## License
+
+Private — all rights reserved.
