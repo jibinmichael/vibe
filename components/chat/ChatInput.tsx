@@ -160,7 +160,7 @@ function ActionButton({ hasText, onSend }: { hasText: boolean; onSend: () => voi
       disabled={!hasText}
       aria-label={hasText ? "Send message" : "Audio mode (coming soon)"}
       className={cn(
-        "relative flex h-8 w-8 items-center justify-center rounded-md transition-all",
+        "relative flex h-8 w-8 items-center justify-center rounded-full transition-all",
         hasText
           ? "bg-foreground text-background hover:opacity-90"
           : "bg-muted text-muted-foreground cursor-not-allowed",
