@@ -168,10 +168,20 @@
     @apply border-border outline-ring/50;
   }
   body {
-    background-color: #f8f8f7;
+    background-color: #fefefe;
     @apply text-foreground font-sans;
   }
   html {
     @apply font-sans;
+  }
+}
+
+@keyframes vibeStopDot {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
   }
 }

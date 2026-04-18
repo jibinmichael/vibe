@@ -2,6 +2,14 @@
 
 A Next.js 16 web application built with React 19, Tailwind CSS v4, and shadcn/ui.
 
+## Current state
+
+vibe is a frontend scaffold. UI is complete for the home, chat, and empty canvas routes. No backend, no auth, no persistence, no real LLM wiring yet.
+
+**Before contributing, read [HANDOFF.md](./HANDOFF.md)** — it maps what's real vs placeholder per component and lists what backend and frontend engineers should build next.
+
+---
+
 ## Prerequisites
 
 - **Node.js 20 LTS** — check with `node -v`
