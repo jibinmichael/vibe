@@ -1,3 +1,4 @@
+import { ChatInputWrapper } from "@/components/chat/ChatInputWrapper"
 import { Body, H2 } from "@/components/shared/Typography"
 
 export default function HomePage() {
@@ -8,11 +9,7 @@ export default function HomePage() {
           What are we working on?
         </H2>
 
-        <div className="bg-background flex h-14 items-center rounded-lg border px-4">
-          <Body muted size="sm">
-            Message vibe…
-          </Body>
-        </div>
+        <ChatInputWrapper />
 
         <div className="grid grid-cols-3 gap-2.5">
           <GistPlaceholder />
