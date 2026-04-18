@@ -190,6 +190,7 @@ There are three valid ways to fetch data. Pick the right one for the situation.
 1. **Surgical edits.** Modify only what's needed. Do not "clean up" unrelated code you happen to see.
 2. **One file at a time when possible.** For multi-file changes, show each file's edit before moving to the next.
 3. **No placeholders or TODOs without a reason.** If you're stubbing something, say so explicitly and explain what it's stubbing.
+4. **No explanatory comments unless the code genuinely cannot self-explain.** Code should self-document through naming. Functional directives are always allowed (e.g. `// eslint-disable-next-line ...`, `// @ts-expect-error ...`). Everything else — no.
 
 **After writing code:**
 1. State what you changed, file by file.
@@ -206,11 +207,13 @@ There are three valid ways to fetch data. Pick the right one for the situation.
 
 ---
 
-## 8. Documentation — enforced in Phase 9 (coming soon)
+## 8. Documentation — written when components stabilize
 
-Documentation is part of the component, not an afterthought. Once Phase 9 is complete, CI will block PRs that add a component without documentation.
+Documentation in `docs/components/` is NOT created during active iteration on a component. It is written only when a component has stabilized — i.e., it's used in production, not being reshaped week-over-week, and a future maintainer would benefit from having its gotchas captured.
 
-For now (pre-Phase 9), follow the intent: if you create a non-trivial component, add a one-line comment at the top explaining its purpose. Formal docs infrastructure will come later.
+When asked to create or modify a component during active development, do NOT automatically generate a matching `.md` file in `docs/components/`. Create docs only when explicitly asked.
+
+ADRs in `docs/adr/` still follow the original policy: written for non-trivial decisions (framework choices, library picks, pattern shifts), regardless of whether the related components are stable.
 
 ---
 

@@ -16,13 +16,15 @@ export function AppSidebar() {
       initial={false}
       animate={{
         width: expanded ? SIDEBAR_EXPANDED_WIDTH : SIDEBAR_COLLAPSED_WIDTH,
-        boxShadow: expanded
-          ? "1px 0 0 rgba(0,0,0,0.05), 0 0 0 0 rgba(0,0,0,0)"
-          : "1px 0 0 rgba(0,0,0,0.05), 2px 0 8px -2px rgba(0,0,0,0.04)",
       }}
       transition={{
         width: springEnter,
-        boxShadow: { duration: 0.01 },
+      }}
+      style={{
+        backgroundColor: "#F8F8F7",
+        boxShadow: expanded
+          ? "1px 0 0 rgba(0,0,0,0.05), 0 0 0 0 rgba(0,0,0,0)"
+          : "1px 0 0 rgba(0,0,0,0.05), 2px 0 8px -2px rgba(0,0,0,0.04)",
       }}
       className="flex flex-shrink-0 flex-col overflow-hidden"
     >
