@@ -1,35 +1,20 @@
-import { Body, H2 } from "@/components/shared/Typography"
+"use client"
+
+import { useRouter } from "next/navigation"
+import { Chatbox } from "@/components/chat/Chatbox"
 
 export default function HomePage() {
+  const router = useRouter()
+
+  const handleSend = (text: string) => {
+    const id = `chat-${Math.random().toString(36).slice(2, 8)}`
+    const url = `/c/${id}?initial=${encodeURIComponent(text)}`
+    router.push(url)
+  }
+
   return (
-    <div className="flex flex-1 items-center justify-center px-6 py-10">
-      <div className="flex w-full max-w-[640px] flex-col gap-5">
-        <H2 as="h1" className="text-center">
-          What are we working on?
-        </H2>
-
-        <div className="bg-background flex h-14 items-center rounded-lg border px-4">
-          <Body muted size="sm">
-            Message vibe…
-          </Body>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2.5">
-          <GistPlaceholder />
-          <GistPlaceholder />
-          <GistPlaceholder />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function GistPlaceholder() {
-  return (
-    <div className="bg-background flex h-[76px] items-end rounded-md border p-3">
-      <Body muted size="sm" className="text-xs">
-        Gist placeholder
-      </Body>
+    <div className="flex flex-1 items-center justify-center px-6">
+      <Chatbox onSend={handleSend} />
     </div>
   )
 }

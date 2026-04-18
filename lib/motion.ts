@@ -1,20 +1,14 @@
 import type { Transition } from "motion/react"
 
+/** Width spring when opening the canvas sidebar */
 export const springEnter: Transition = {
   type: "spring",
-  stiffness: 500,
-  damping: 40,
-  mass: 1,
+  stiffness: 420,
+  damping: 38,
 }
 
+/** Width tween when closing the canvas sidebar */
 export const easeExit: Transition = {
-  type: "tween",
-  duration: 0.2,
-  ease: [0.4, 0, 0.2, 1],
-}
-
-export const subtleFade: Transition = {
-  type: "tween",
-  duration: 0.15,
-  ease: "linear",
+  duration: 0.22,
+  ease: [0.4, 0, 1, 1],
 }
