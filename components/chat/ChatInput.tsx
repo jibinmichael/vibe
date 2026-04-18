@@ -5,9 +5,10 @@ import {
   useEffect,
   useRef,
   useState,
-  type KeyboardEvent,
   type ChangeEvent,
+  type KeyboardEvent,
 } from "react"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { cn } from "@/lib/utils"
 
 export type ChatMode = "analyse" | "plan" | "generate"
@@ -67,7 +68,7 @@ export function ChatInput({
     }
   }, [autoFocus])
 
-  const canSend = value.trim().length > 0
+  const hasText = value.trim().length > 0
 
   const handleSend = useCallback(() => {
     const text = value.trim()
@@ -90,10 +91,16 @@ export function ChatInput({
     setValue(event.target.value)
   }, [])
 
+  const handleModeChange = useCallback((next: string) => {
+    if (next === "analyse" || next === "plan" || next === "generate") {
+      setMode(next)
+    }
+  }, [])
+
   return (
     <div
       className={cn(
-        "bg-background rounded-lg border px-3 pt-3 pb-2.5 transition-colors",
+        "bg-background rounded-2xl border px-3 pt-3 pb-2.5 transition-colors",
         focused ? "border-border ring-ring/20 ring-1" : "border-border/60",
         className,
       )}
@@ -115,67 +122,96 @@ export function ChatInput({
       />
 
       <div className="mt-2 flex items-center justify-between">
-        <ModeToggle value={mode} onChange={setMode} />
-        <SendButton enabled={canSend} onClick={handleSend} />
+        <ToggleGroup
+          type="single"
+          value={mode}
+          onValueChange={(next) => {
+            if (next) handleModeChange(next)
+          }}
+          className="bg-muted inline-flex gap-0.5 rounded-md p-0.5"
+          aria-label="Response mode"
+        >
+          {MODES.map((m) => (
+            <ToggleGroupItem
+              key={m.value}
+              value={m.value}
+              className={cn(
+                "text-muted-foreground h-7 rounded-[4px] px-3 text-[13px] font-normal transition-all",
+                "hover:text-foreground hover:bg-transparent",
+                "data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:font-medium data-[state=on]:shadow-sm",
+              )}
+            >
+              {m.label}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+
+        <ActionButton hasText={hasText} onSend={handleSend} />
       </div>
     </div>
   )
 }
 
-function ModeToggle({ value, onChange }: { value: ChatMode; onChange: (next: ChatMode) => void }) {
-  return (
-    <div
-      role="radiogroup"
-      aria-label="Response mode"
-      className="bg-muted inline-flex items-center gap-0.5 rounded-md p-0.5"
-    >
-      {MODES.map((m) => {
-        const active = m.value === value
-        return (
-          <button
-            key={m.value}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            onClick={() => onChange(m.value)}
-            className={cn(
-              "rounded-[4px] px-3 py-1 text-[13px] transition-all",
-              active
-                ? "bg-background text-foreground font-medium shadow-sm"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {m.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-function SendButton({ enabled, onClick }: { enabled: boolean; onClick: () => void }) {
+function ActionButton({ hasText, onSend }: { hasText: boolean; onSend: () => void }) {
   return (
     <button
       type="button"
-      onClick={onClick}
-      disabled={!enabled}
-      aria-label="Send message"
+      onClick={hasText ? onSend : undefined}
+      disabled={!hasText}
+      aria-label={hasText ? "Send message" : "Audio mode (coming soon)"}
       className={cn(
-        "flex h-8 w-8 items-center justify-center rounded-md transition-opacity",
-        enabled
+        "relative flex h-8 w-8 items-center justify-center rounded-md transition-all",
+        hasText
           ? "bg-foreground text-background hover:opacity-90"
           : "bg-muted text-muted-foreground cursor-not-allowed",
       )}
     >
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <path
-          d="M8 13V3M8 3l-4 4M8 3l4 4"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-0 flex items-center justify-center transition-opacity duration-150",
+          hasText ? "opacity-0" : "opacity-100",
+        )}
+      >
+        <MicIcon />
+      </span>
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-0 flex items-center justify-center transition-opacity duration-150",
+          hasText ? "opacity-100" : "opacity-0",
+        )}
+      >
+        <ArrowUpIcon />
+      </span>
     </button>
+  )
+}
+
+function MicIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="6" y="2.5" width="4" height="7" rx="2" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M4 8.5v0.5a4 4 0 0 0 8 0v-0.5M8 13v1.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function ArrowUpIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M8 13V3M8 3l-4 4M8 3l4 4"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }
