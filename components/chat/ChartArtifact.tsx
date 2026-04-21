@@ -62,6 +62,13 @@ const STATUS_COLOR: Record<ChartDatumStatus, string> = {
   weak: "#f0a6a0",
 }
 
+/** Body height; inner plot area is smaller so ResponsiveContainer gets a definite size during SSG (avoids Recharts -1×-1). */
+const CHART_BODY_HEIGHT_PX = 260
+const CHART_BODY_PADDING_TOP = 18
+const CHART_BODY_PADDING_BOTTOM = 14
+const CHART_PLOT_HEIGHT_PX =
+  CHART_BODY_HEIGHT_PX - CHART_BODY_PADDING_TOP - CHART_BODY_PADDING_BOTTOM
+
 function colorFor(datum: ChartDatum): string {
   return STATUS_COLOR[datum.status ?? "good"]
 }
@@ -82,7 +89,13 @@ export function ChartArtifact({
     bw: number
     bh: number
   } | null>(null)
+  /** Recharts measures the DOM during render; skip until mounted so SSG/prerender never hits width/height -1. */
+  const [plotMounted, setPlotMounted] = useState(false)
   const bodyRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    queueMicrotask(() => setPlotMounted(true))
+  }, [])
 
   const handlePinpointClick = (datum: ChartDatum, event: ReactMouseEvent | MouseEvent) => {
     if (!pinpointActive) return
@@ -241,143 +254,159 @@ export function ChartArtifact({
         }}
         onMouseLeave={() => setCursorPos(null)}
         style={{
-          padding: "18px 18px 14px",
-          height: 260,
+          boxSizing: "border-box",
+          padding: `${CHART_BODY_PADDING_TOP}px 18px ${CHART_BODY_PADDING_BOTTOM}px`,
+          height: CHART_BODY_HEIGHT_PX,
           outline: "none",
           position: "relative",
           cursor: pinpointActive && !clickedDatum ? "none" : "default",
         }}
       >
-        <ResponsiveContainer width="100%" height="100%">
-          {chartType === "bar" ? (
-            <BarChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: -10 }}>
-              <CartesianGrid stroke="rgba(0,0,0,0.05)" vertical={false} />
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 10.5, fill: "rgba(0,0,0,0.45)" }}
-                axisLine={false}
-                tickLine={false}
-                interval={0}
-              />
-              <YAxis
-                tick={{ fontSize: 10.5, fill: "rgba(0,0,0,0.45)" }}
-                axisLine={false}
-                tickLine={false}
-                width={40}
-              />
-              <Tooltip
-                cursor={pinpointActive ? false : { fill: "rgba(0,0,0,0.03)" }}
-                contentStyle={tooltipStyle}
-                {...(pinpointActive ? { active: false } : {})}
-              />
-              <Bar
-                dataKey="value"
-                radius={[3, 3, 0, 0]}
-                {...(pinpointActive ? { activeBar: false } : {})}
-                onClick={(barData, _index, event) => {
-                  handlePinpointClick(
-                    (barData as BarRectangleItem).payload as ChartDatum,
-                    event as unknown as ReactMouseEvent,
-                  )
-                }}
-              >
-                {data.map((d, i) => (
-                  <Cell key={i} fill={colorFor(d)} />
-                ))}
-              </Bar>
-            </BarChart>
-          ) : chartType === "line" ? (
-            <LineChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: -10 }}>
-              <CartesianGrid stroke="rgba(0,0,0,0.05)" vertical={false} />
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 10.5, fill: "rgba(0,0,0,0.45)" }}
-                axisLine={false}
-                tickLine={false}
-                interval={0}
-              />
-              <YAxis
-                tick={{ fontSize: 10.5, fill: "rgba(0,0,0,0.45)" }}
-                axisLine={false}
-                tickLine={false}
-                width={40}
-              />
-              <Tooltip
-                cursor={pinpointActive ? false : { stroke: "rgba(0,0,0,0.1)" }}
-                contentStyle={tooltipStyle}
-                {...(pinpointActive ? { active: false } : {})}
-              />
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke="#0a84ff"
-                strokeWidth={2}
-                dot={(props: DotItemDotProps) => {
-                  const { cx, cy, payload, index } = props
-                  const datum = payload as ChartDatum
-                  if (cx == null || cy == null) {
-                    return <g key={`dot-${index}`} />
-                  }
-                  return (
-                    <circle
-                      key={`dot-${index}`}
-                      cx={cx}
-                      cy={cy}
-                      r={3}
-                      fill="#0a84ff"
-                      style={{ cursor: pinpointActive ? "none" : "default" }}
-                      onClick={(e) => handlePinpointClick(datum, e)}
-                      pointerEvents="all"
-                    />
-                  )
-                }}
-                activeDot={(props: ActiveDotProps) => {
-                  const { cx, cy, payload, index } = props
-                  const datum = payload as ChartDatum
-                  if (cx == null || cy == null) {
-                    return <g key={`active-dot-${index}`} />
-                  }
-                  return (
-                    <circle
-                      key={`active-dot-${index}`}
-                      cx={cx}
-                      cy={cy}
-                      r={5}
-                      fill="#0a84ff"
-                      onClick={(e) => handlePinpointClick(datum, e)}
-                      pointerEvents="all"
-                    />
-                  )
-                }}
-              />
-            </LineChart>
+        <div
+          className="chart-artifact-plot"
+          style={{
+            width: "100%",
+            minWidth: 0,
+            height: CHART_PLOT_HEIGHT_PX,
+            minHeight: CHART_PLOT_HEIGHT_PX,
+            position: "relative",
+          }}
+        >
+          {!plotMounted ? (
+            <div aria-hidden style={{ height: CHART_PLOT_HEIGHT_PX }} />
           ) : (
-            <PieChart>
-              <Tooltip contentStyle={tooltipStyle} />
-              <Pie
-                data={data}
-                dataKey="value"
-                nameKey="label"
-                innerRadius={40}
-                outerRadius={80}
-                paddingAngle={2}
-                label={{ fontSize: 10, fill: "rgba(0,0,0,0.55)" }}
-                onClick={(pieData, _index, event) => {
-                  const datum = (pieData.payload ?? pieData) as ChartDatum
-                  handlePinpointClick(datum, event)
-                }}
-              >
-                {data.map((d, i) => (
-                  <Cell
-                    key={i}
-                    fill={colorFor(d)}
-                    style={{ cursor: pinpointActive ? "none" : "default" }}
+            <ResponsiveContainer width="100%" height="100%">
+              {chartType === "bar" ? (
+                <BarChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: -10 }}>
+                  <CartesianGrid stroke="rgba(0,0,0,0.05)" vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 10.5, fill: "rgba(0,0,0,0.45)" }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={0}
                   />
-                ))}
-              </Pie>
-            </PieChart>
+                  <YAxis
+                    tick={{ fontSize: 10.5, fill: "rgba(0,0,0,0.45)" }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={40}
+                  />
+                  <Tooltip
+                    cursor={pinpointActive ? false : { fill: "rgba(0,0,0,0.03)" }}
+                    contentStyle={tooltipStyle}
+                    {...(pinpointActive ? { active: false } : {})}
+                  />
+                  <Bar
+                    dataKey="value"
+                    radius={[3, 3, 0, 0]}
+                    {...(pinpointActive ? { activeBar: false } : {})}
+                    onClick={(barData, _index, event) => {
+                      handlePinpointClick(
+                        (barData as BarRectangleItem).payload as ChartDatum,
+                        event as unknown as ReactMouseEvent,
+                      )
+                    }}
+                  >
+                    {data.map((d, i) => (
+                      <Cell key={i} fill={colorFor(d)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              ) : chartType === "line" ? (
+                <LineChart data={data} margin={{ top: 10, right: 10, bottom: 0, left: -10 }}>
+                  <CartesianGrid stroke="rgba(0,0,0,0.05)" vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fontSize: 10.5, fill: "rgba(0,0,0,0.45)" }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={0}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10.5, fill: "rgba(0,0,0,0.45)" }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={40}
+                  />
+                  <Tooltip
+                    cursor={pinpointActive ? false : { stroke: "rgba(0,0,0,0.1)" }}
+                    contentStyle={tooltipStyle}
+                    {...(pinpointActive ? { active: false } : {})}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#0a84ff"
+                    strokeWidth={2}
+                    dot={(props: DotItemDotProps) => {
+                      const { cx, cy, payload, index } = props
+                      const datum = payload as ChartDatum
+                      if (cx == null || cy == null) {
+                        return <g key={`dot-${index}`} />
+                      }
+                      return (
+                        <circle
+                          key={`dot-${index}`}
+                          cx={cx}
+                          cy={cy}
+                          r={3}
+                          fill="#0a84ff"
+                          style={{ cursor: pinpointActive ? "none" : "default" }}
+                          onClick={(e) => handlePinpointClick(datum, e)}
+                          pointerEvents="all"
+                        />
+                      )
+                    }}
+                    activeDot={(props: ActiveDotProps) => {
+                      const { cx, cy, payload, index } = props
+                      const datum = payload as ChartDatum
+                      if (cx == null || cy == null) {
+                        return <g key={`active-dot-${index}`} />
+                      }
+                      return (
+                        <circle
+                          key={`active-dot-${index}`}
+                          cx={cx}
+                          cy={cy}
+                          r={5}
+                          fill="#0a84ff"
+                          onClick={(e) => handlePinpointClick(datum, e)}
+                          pointerEvents="all"
+                        />
+                      )
+                    }}
+                  />
+                </LineChart>
+              ) : (
+                <PieChart>
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Pie
+                    data={data}
+                    dataKey="value"
+                    nameKey="label"
+                    innerRadius={40}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    label={{ fontSize: 10, fill: "rgba(0,0,0,0.55)" }}
+                    onClick={(pieData, _index, event) => {
+                      const datum = (pieData.payload ?? pieData) as ChartDatum
+                      handlePinpointClick(datum, event)
+                    }}
+                  >
+                    {data.map((d, i) => (
+                      <Cell
+                        key={i}
+                        fill={colorFor(d)}
+                        style={{ cursor: pinpointActive ? "none" : "default" }}
+                      />
+                    ))}
+                  </Pie>
+                </PieChart>
+              )}
+            </ResponsiveContainer>
           )}
-        </ResponsiveContainer>
+        </div>
 
         {pinpointActive && !clickedDatum && cursorPos && (
           <div

@@ -27,7 +27,6 @@ const PAGES: PlaygroundPageEntry[] = [
   { path: "/", label: "Chatbox" },
   { path: "/thinking", label: "Thinking indicator" },
   { path: "/feed", label: "Feed" },
-  { path: "/hover-card", label: "Hover card" },
 ]
 
 export function PlaygroundNav() {

@@ -1,8 +1,6 @@
 "use client"
 
-import { createPortal } from "react-dom"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { CampaignHoverCard } from "@/components/hover-card/CampaignHoverCard"
+import { useMemo, useState } from "react"
 
 /**
  * MonthCalendar — a full-width month view calendar.
@@ -24,21 +22,10 @@ import { CampaignHoverCard } from "@/components/hover-card/CampaignHoverCard"
  *   - onCellClick: optional handler when user activates an in-month date cell
  */
 
-export type CampaignHoverAudienceTag = {
-  label: string
-  variant: "outline" | "ghost"
-}
-
-/** AI-planned pills include hover copy derived from the same hint rows they replace. */
 export type CampaignPill = {
   id: string
   date: number // 1..31 (current month only)
   title: string
-  hoverTitle: string
-  hoverContentLabel: string
-  hoverContentType: string
-  hoverAudienceSummary: string
-  hoverAudienceTags: readonly CampaignHoverAudienceTag[]
 }
 
 export type HolidayHint = {
@@ -91,35 +78,6 @@ const MONTH_NAMES = [
   "December",
 ]
 
-const MONTH_SHORT_HOVER = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-] as const
-
-function dayOrdinal(d: number): string {
-  if (d % 100 >= 11 && d % 100 <= 13) return `${d}th`
-  switch (d % 10) {
-    case 1:
-      return `${d}st`
-    case 2:
-      return `${d}nd`
-    case 3:
-      return `${d}rd`
-    default:
-      return `${d}th`
-  }
-}
-
 function hash32(seed: string): number {
   let h = 0
   for (let i = 0; i < seed.length; i++) {
@@ -163,39 +121,6 @@ function buildMockSentCampaigns(year: number, month: number): MockSentCampaign[]
   }))
 }
 
-/** Figma-style schedule line; time is deterministic per pill id for stable display. */
-function formatHoverScheduleLine(
-  year: number,
-  monthIndex: number,
-  day: number,
-  pillId: string,
-): string {
-  const h = hash32(pillId)
-  const hour24 = (h >>> 8) % 24
-  const minute = (h >>> 16) % 60
-  const ampm = hour24 >= 12 ? "PM" : "AM"
-  let hour12 = hour24 % 12
-  if (hour12 === 0) hour12 = 12
-  const mo = MONTH_SHORT_HOVER[monthIndex] ?? "Jan"
-  return `${hour12}:${minute.toString().padStart(2, "0")} ${ampm} ${mo} ${dayOrdinal(day)} ${year}`
-}
-
-/** Matches hover-card playground width; card uses same component + full width inside. */
-const CALENDAR_HOVER_CARD_WIDTH_PX = 280
-
-function clampHoverLeft(left: number, cardWidth: number): number {
-  if (typeof window === "undefined") return left
-  const margin = 8
-  const maxLeft = window.innerWidth - cardWidth - margin
-  return Math.min(Math.max(margin, left), maxLeft)
-}
-
-type CalendarHoverPortalState = {
-  top: number
-  left: number
-  pill: CampaignPill
-}
-
 export function MonthCalendar({
   year,
   month,
@@ -214,54 +139,6 @@ export function MonthCalendar({
 
   const [showSentCampaigns, setShowSentCampaigns] = useState(true)
   const mockSentCampaigns = useMemo(() => buildMockSentCampaigns(year, month), [year, month])
-
-  const [hoverPortal, setHoverPortal] = useState<CalendarHoverPortalState | null>(null)
-  const anchorRef = useRef<HTMLDivElement | null>(null)
-  const leaveTimerRef = useRef<number | null>(null)
-
-  const cancelLeaveTimer = useCallback(() => {
-    if (leaveTimerRef.current != null) {
-      clearTimeout(leaveTimerRef.current)
-      leaveTimerRef.current = null
-    }
-  }, [])
-
-  const scheduleCloseHover = useCallback(() => {
-    cancelLeaveTimer()
-    leaveTimerRef.current = window.setTimeout(() => setHoverPortal(null), 120)
-  }, [cancelLeaveTimer])
-
-  const updateHoverPortalPosition = useCallback(() => {
-    const el = anchorRef.current
-    if (!el) return
-    const r = el.getBoundingClientRect()
-    setHoverPortal((prev) =>
-      prev
-        ? {
-            ...prev,
-            top: r.bottom,
-            left: clampHoverLeft(r.left, CALENDAR_HOVER_CARD_WIDTH_PX),
-          }
-        : null,
-    )
-  }, [])
-
-  useEffect(() => {
-    return () => cancelLeaveTimer()
-  }, [cancelLeaveTimer])
-
-  const hoverOpen = hoverPortal != null
-
-  useEffect(() => {
-    if (!hoverOpen) return
-    updateHoverPortalPosition()
-    window.addEventListener("scroll", updateHoverPortalPosition, true)
-    window.addEventListener("resize", updateHoverPortalPosition)
-    return () => {
-      window.removeEventListener("scroll", updateHoverPortalPosition, true)
-      window.removeEventListener("resize", updateHoverPortalPosition)
-    }
-  }, [hoverOpen, updateHoverPortalPosition])
 
   return (
     <div
@@ -764,21 +641,7 @@ export function MonthCalendar({
                 </div>
               ))}
               {cellCampaigns.map((c, pillIdx) => (
-                <div
-                  key={c.id}
-                  className="month-calendar-draft-event-wrap"
-                  onMouseEnter={(e) => {
-                    cancelLeaveTimer()
-                    anchorRef.current = e.currentTarget
-                    const r = e.currentTarget.getBoundingClientRect()
-                    setHoverPortal({
-                      top: r.bottom,
-                      left: clampHoverLeft(r.left, CALENDAR_HOVER_CARD_WIDTH_PX),
-                      pill: c,
-                    })
-                  }}
-                  onMouseLeave={scheduleCloseHover}
-                >
+                <div key={c.id} className="month-calendar-draft-event-wrap">
                   <div
                     className="month-calendar-draft-event"
                     style={{ animationDelay: `${pillIdx * 120}ms` }}
@@ -800,37 +663,6 @@ export function MonthCalendar({
           )
         })}
       </div>
-      {typeof document !== "undefined" &&
-        hoverPortal != null &&
-        createPortal(
-          <div
-            className="pointer-events-auto fixed z-[2147483647]"
-            style={{
-              top: hoverPortal.top,
-              left: hoverPortal.left,
-              width: CALENDAR_HOVER_CARD_WIDTH_PX,
-            }}
-            onMouseEnter={cancelLeaveTimer}
-            onMouseLeave={scheduleCloseHover}
-          >
-            <CampaignHoverCard
-              className="w-full"
-              title={hoverPortal.pill.hoverTitle}
-              scheduledAt={formatHoverScheduleLine(
-                year,
-                month,
-                hoverPortal.pill.date,
-                hoverPortal.pill.id,
-              )}
-              scheduleStatus="Scheduled"
-              contentLabel={hoverPortal.pill.hoverContentLabel}
-              contentType={hoverPortal.pill.hoverContentType}
-              audienceSummary={hoverPortal.pill.hoverAudienceSummary}
-              audienceTags={hoverPortal.pill.hoverAudienceTags}
-            />
-          </div>,
-          document.body,
-        )}
     </div>
   )
 }

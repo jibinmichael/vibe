@@ -20,13 +20,7 @@ import { Chatbox, type ChatboxChip } from "@/components/chat/Chatbox"
 import type { ChoiceOption } from "@/components/chat/ChoiceArtifact"
 import { ThinkingIndicator } from "@/components/chat/ThinkingIndicator"
 import { UserRow } from "@/components/chat/UserRow"
-import {
-  MonthCalendar,
-  type CampaignHoverAudienceTag,
-  type CampaignPill,
-  type HolidayHint,
-  type SegmentHint,
-} from "@/components/campaign/MonthCalendar"
+import { MonthCalendar, type CampaignPill } from "@/components/campaign/MonthCalendar"
 import { PlanWithVibeFab } from "@/components/fab/PlanWithVibeFab"
 import { getHolidayHints, getSegmentHints } from "@/data/calendar-hints"
 
@@ -35,42 +29,6 @@ function stripHtml(html: string): string {
     .replace(/<[^>]+>/g, "")
     .replace(/\s+/g, " ")
     .trim()
-}
-
-function hash32(seed: string): number {
-  let h = 0
-  for (let i = 0; i < seed.length; i++) {
-    h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0
-  }
-  return h >>> 0
-}
-
-function audienceContactLine(pillId: string): string {
-  const count = 2000 + (hash32(pillId) % 8000)
-  return `${count} Contacts `
-}
-
-function audienceTagsHoliday(h: HolidayHint, pillId: string): readonly CampaignHoverAudienceTag[] {
-  const n = 100 + (hash32(pillId) % 900)
-  const word = h.holidayName.trim().split(/\s+/)[0] ?? "Holiday"
-  const w = word.length > 14 ? word.slice(0, 14) : word
-  return [
-    { label: w, variant: "outline" },
-    { label: "Holiday", variant: "outline" },
-    { label: `+${n}`, variant: "ghost" },
-  ]
-}
-
-function audienceTagsSegment(s: SegmentHint, pillId: string): readonly CampaignHoverAudienceTag[] {
-  const n = 100 + (hash32(pillId) % 900)
-  const tail = (s.id.split("-").pop() ?? "segment").toLowerCase()
-  const t = tail.length > 14 ? tail.slice(0, 14) : tail
-  const mid = s.tagLabel === "OPPORTUNITY" ? "Opportunity" : s.tagLabel
-  return [
-    { label: t, variant: "outline" },
-    { label: mid, variant: "outline" },
-    { label: `+${n}`, variant: "ghost" },
-  ]
 }
 
 /** Planned campaign pills aligned to holiday + opportunity dates for the visible month. */
@@ -87,33 +45,20 @@ function buildPlannedCampaignsForMonth(monthIndex: number): CampaignPill[] {
 
   holidays.forEach((h) => {
     const title = h.holidayName.replace(/\s+/g, " ").trim()
-    const pillId = `plan-${h.id}`
-    const plain = stripHtml(h.message)
     pushPill({
-      id: pillId,
+      id: `plan-${h.id}`,
       date: h.date,
       title,
-      hoverTitle: `WhatsApp Campaign — ${title}`,
-      hoverContentLabel: plain,
-      hoverContentType: "Holiday",
-      hoverAudienceSummary: audienceContactLine(pillId),
-      hoverAudienceTags: audienceTagsHoliday(h, pillId),
     })
   })
 
   segments.forEach((s) => {
     const plain = stripHtml(s.message)
     const title = plain.length > 48 ? `${plain.slice(0, 45)}…` : plain
-    const pillId = `plan-${s.id}`
     pushPill({
-      id: pillId,
+      id: `plan-${s.id}`,
       date: s.date,
       title,
-      hoverTitle: `WhatsApp Campaign — ${title}`,
-      hoverContentLabel: plain,
-      hoverContentType: "Opportunity",
-      hoverAudienceSummary: audienceContactLine(pillId),
-      hoverAudienceTags: audienceTagsSegment(s, pillId),
     })
   })
 
