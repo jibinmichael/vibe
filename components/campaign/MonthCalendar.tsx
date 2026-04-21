@@ -1,7 +1,7 @@
 "use client"
 
 import { createPortal } from "react-dom"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CampaignHoverCard } from "@/components/hover-card/CampaignHoverCard"
 
 /**
@@ -128,6 +128,41 @@ function hash32(seed: string): number {
   return h >>> 0
 }
 
+type MockSentCampaign = { id: string; date: number; title: string }
+
+/** Local mock “completed send” pills — deterministic dates per visible month. */
+function buildMockSentCampaigns(year: number, month: number): MockSentCampaign[] {
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const names = [
+    "VIP spring touch",
+    "Cart recovery batch",
+    "Announcement — April drops",
+    "Regional festival greet",
+    "Renewal reminders",
+    "Cold list warm-up",
+  ]
+  let state = hash32(`${year}-${month}-sent`) | 1
+  const rnd = (): number => {
+    state = Math.imul(state, 48271) % 0x7fffffff
+    return state >>> 0
+  }
+  const picked = new Set<number>()
+  const count = Math.min(6, Math.max(4, Math.floor(daysInMonth / 5)))
+  let guard = 0
+  while (picked.size < count && guard < 400) {
+    guard += 1
+    const day = (rnd() % daysInMonth) + 1
+    if (picked.has(day)) continue
+    picked.add(day)
+  }
+  const dates = [...picked].sort((a, b) => a - b)
+  return dates.map((date, i) => ({
+    id: `mock-sent-${year}-${month}-${date}`,
+    date,
+    title: names[(i + rnd()) % names.length] ?? "Campaign sent",
+  }))
+}
+
 /** Figma-style schedule line; time is deterministic per pill id for stable display. */
 function formatHoverScheduleLine(
   year: number,
@@ -176,6 +211,9 @@ export function MonthCalendar({
 }: MonthCalendarProps) {
   const cells = buildCells(year, month, todayDate)
   const monthLabel = `${MONTH_NAMES[month]} ${year}`
+
+  const [showSentCampaigns, setShowSentCampaigns] = useState(true)
+  const mockSentCampaigns = useMemo(() => buildMockSentCampaigns(year, month), [year, month])
 
   const [hoverPortal, setHoverPortal] = useState<CalendarHoverPortalState | null>(null)
   const anchorRef = useRef<HTMLDivElement | null>(null)
@@ -365,6 +403,28 @@ export function MonthCalendar({
           overflow-wrap: anywhere;
           word-break: break-word;
         }
+        .month-calendar-sent-row {
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+          min-width: 0;
+          padding-top: 2px;
+        }
+        .month-calendar-sent-pill {
+          display: block;
+          width: 100%;
+          box-sizing: border-box;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-size: 10.5px;
+          font-weight: 500;
+          line-height: 1.35;
+          color: #15803d;
+          background: rgba(22, 163, 74, 0.1);
+          white-space: normal;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
         @keyframes monthCalendarPillIn {
           0% { opacity: 0; transform: translateY(4px); }
           100% { opacity: 1; transform: translateY(0); }
@@ -469,7 +529,7 @@ export function MonthCalendar({
       `}</style>
 
       <header
-        className="month-calendar-head flex items-center"
+        className="month-calendar-head flex items-center justify-between gap-4"
         style={{
           padding: "16px 20px",
           borderBottom: "1px solid rgba(0,0,0,0.05)",
@@ -566,6 +626,30 @@ export function MonthCalendar({
             </svg>
           </button>
         </div>
+
+        <label
+          className="month-calendar-sent-toggle flex shrink-0 cursor-pointer items-center gap-1.5 select-none"
+          style={{ fontSize: 11, fontWeight: 500, color: "rgba(0,0,0,0.55)" }}
+        >
+          <span>Show send campaign</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={showSentCampaigns}
+            onClick={() => setShowSentCampaigns((v) => !v)}
+            className="relative inline-flex h-4 w-[26px] shrink-0 cursor-pointer rounded-full border-0 p-0 transition-colors"
+            style={{
+              background: showSentCampaigns ? "rgba(22, 163, 74, 0.45)" : "rgba(0,0,0,0.15)",
+            }}
+          >
+            <span
+              className="pointer-events-none absolute top-[2px] block size-[12px] rounded-full bg-white shadow-sm transition-[left]"
+              style={{
+                left: showSentCampaigns ? 12 : 2,
+              }}
+            />
+          </button>
+        </label>
       </header>
 
       <div
@@ -612,6 +696,9 @@ export function MonthCalendar({
           }
 
           const cellCampaigns = campaigns.filter((c) => c.date === cell.date)
+          const cellSentCampaigns = showSentCampaigns
+            ? mockSentCampaigns.filter((s) => s.date === cell.date)
+            : []
           const hideHintsForPlan = cellCampaigns.length > 0
           const hints = hideHintsForPlan ? [] : holidayHints.filter((h) => h.date === cell.date)
           const firstHint = hints[0]
@@ -699,6 +786,11 @@ export function MonthCalendar({
                     <span className="month-calendar-draft-label">Draft</span>
                     <span className="month-calendar-pill">{c.title}</span>
                   </div>
+                </div>
+              ))}
+              {cellSentCampaigns.map((s) => (
+                <div key={s.id} className="month-calendar-sent-row">
+                  <span className="month-calendar-sent-pill">{s.title}</span>
                 </div>
               ))}
               <span className="month-calendar-cell-hover" aria-hidden="true">
