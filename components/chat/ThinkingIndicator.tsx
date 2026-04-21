@@ -69,15 +69,6 @@ const TEXT_POOLS: Record<EmotionalState, string[]> = {
 const TEXT_ROTATE_MS = 4000
 const EYE_COLOR = "rgba(0,0,0,0.55)"
 
-function formatElapsed(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000)
-  if (totalSeconds < 60) return `${totalSeconds}s`
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  if (seconds === 0) return `${minutes}m`
-  return `${minutes}m ${seconds}s`
-}
-
 type ThinkingState = {
   emotionalState: EmotionalState
   textIndex: number
@@ -89,14 +80,12 @@ export function ThinkingIndicator() {
     emotionalState: "focused",
     textIndex: 0,
   })
-  const [elapsedMs, setElapsedMs] = useState(0)
 
   useEffect(() => {
     startRef.current = Date.now()
 
     const stateTimer = window.setInterval(() => {
       const elapsed = Date.now() - startRef.current
-      setElapsedMs(elapsed)
       let current: EmotionalState = "focused"
       for (const t of STATE_THRESHOLDS_MS) {
         if (elapsed >= t.after) current = t.state
@@ -133,27 +122,24 @@ export function ThinkingIndicator() {
         <Eye />
         <Eye />
       </span>
-      <div className="flex flex-col gap-2.5">
-        <span className="relative inline-block min-h-[20px]">
-          <AnimatePresence mode="popLayout" initial={false}>
-            <motion.span
-              key={`${state}-${textIndex}`}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{
-                opacity: { duration: 0.3 },
-                y: { duration: 0.4, ease: [0.32, 0.72, 0, 1] },
-              }}
-              className="block text-[13px] leading-[1.4] whitespace-nowrap"
-              style={{ color: "rgba(0,0,0,0.4)" }}
-            >
-              {currentText}
-            </motion.span>
-          </AnimatePresence>
-        </span>
-        <ThinkingCard elapsedMs={elapsedMs} />
-      </div>
+      <span className="relative inline-block min-h-[20px]">
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.span
+            key={`${state}-${textIndex}`}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{
+              opacity: { duration: 0.3 },
+              y: { duration: 0.4, ease: [0.32, 0.72, 0, 1] },
+            }}
+            className="block text-[13px] leading-[1.4] whitespace-nowrap"
+            style={{ color: "rgba(0,0,0,0.4)" }}
+          >
+            {currentText}
+          </motion.span>
+        </AnimatePresence>
+      </span>
     </div>
   )
 }
@@ -175,56 +161,5 @@ function Eye() {
         times: [0, 0.92, 0.96, 1],
       }}
     />
-  )
-}
-
-function ThinkingCard({ elapsedMs }: { elapsedMs: number }) {
-  return (
-    <div
-      className="flex items-center gap-2.5 rounded-[10px] bg-white"
-      style={{
-        width: 280,
-        padding: "10px 12px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.04), 0 0 0 0.5px rgba(0,0,0,0.03)",
-      }}
-    >
-      <div
-        className="flex flex-shrink-0 items-center justify-center"
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 6,
-          background: "rgba(0,0,0,0.06)",
-          color: "rgba(0,0,0,0.4)",
-        }}
-      >
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-          <rect
-            x="2"
-            y="2"
-            width="10"
-            height="10"
-            rx="1.5"
-            stroke="currentColor"
-            strokeWidth="1.3"
-          />
-          <path d="M2 6h10M6 2v10" stroke="currentColor" strokeWidth="1.3" />
-        </svg>
-      </div>
-      <div className="flex min-w-0 flex-col" style={{ gap: 2 }}>
-        <span
-          className="text-[13px] leading-[1.3] font-medium"
-          style={{ color: "rgba(0,0,0,0.7)" }}
-        >
-          Generating dashboard
-        </span>
-        <span
-          className="text-[11px] leading-[1.3] tabular-nums"
-          style={{ color: "rgba(0,0,0,0.35)" }}
-        >
-          {formatElapsed(elapsedMs)}
-        </span>
-      </div>
-    </div>
   )
 }

@@ -1,41 +1,65 @@
-# vibe — handoff (real vs placeholder)
+# vibe — engineering handoff
 
-This doc is for backend and frontend engineers integrating real product behavior. The UI scaffold is intentionally client-only until APIs exist.
+**Status:** Component-only scope. Single-page playground at `/` showing every production-ready component in isolated states.
 
-## Routes
+## What exists
 
-| Route | What’s real | Placeholder |
-| ----- | ----------- | ----------- |
-| `/` (home) | Centered [`Chatbox`](./components/chat/Chatbox.tsx); `onSend` navigates to `/c/[id]?initial=…` | No persistence, no thread list |
-| `/c/[id]` | Scrollable transcript, pinned [`Chatbox`](./components/chat/Chatbox.tsx), optional canvas aside when `?canvas=open`, [`ThinkingIndicator`](./components/chat/ThinkingIndicator.tsx) after last user bubble | Messages are React state only (lost on reload). No streaming, no assistant replies |
-| Canvas aside | Animated width (`springEnter` / `easeExit`) | Empty `<aside>` — no embedded app yet |
+Every component is standalone, installable, and stateless unless noted. Engineers compose their own pages.
 
-## Components
+### Components
 
-### `Chatbox`
+- **`components/chat/Chatbox.tsx`** — textarea with autogrow, rotating placeholders, tab-to-fill suggestions, mic with Stop pill animation, Skills button, send button. Props: `onSend`, `value`, `onValueChange`, `disabled`, `rotatePlaceholder`.
+- **`components/chat/ThinkingIndicator.tsx`** — 5-state emotional animation (focused → curious → working → playful → patient) over 45 seconds with 40 rotating copy lines. Props: `completed?: boolean`. Currently commented out in the playground but importable anywhere.
+- **`components/layout/AppShell.tsx`** — sidebar + main content shell. Used by `app/layout.tsx`.
+- **`components/layout/AppSidebar.tsx`** — collapsible sidebar, 220 ↔ 56px, persists state via localStorage.
+- **`components/ui/*`** — shadcn/ui primitives.
 
-**Real:** Autogrowing textarea (max height), rotating placeholders + Tab-to-fill suggestions, fake mic/stop (“recording”), Send on Enter / button, Skills button chrome, optional `disabled` prop (chat page disables while “thinking”).  
-**Placeholder:** No speech-to-text; mic toggles UI state only. Skills does nothing. Sending only runs `onSend(text)` — home page navigates; chat page appends a user message.
+### Infrastructure
 
-### `ThinkingIndicator`
+- Next.js 16.2 App Router + Turbopack
+- React 19, TypeScript strict
+- Tailwind v4 (CSS config in `app/globals.css`)
+- CI (typecheck, lint, format, build) on every PR
+- Husky + commitlint (conventional commits required)
+- pnpm 10, Node 20 LTS
 
-**Real:** Five emotional phases driven by elapsed time thresholds, rotating copy pools, blink animation on static eyes, “Generating dashboard” card with [`formatElapsed`](./components/chat/ThinkingIndicator.tsx) timer.  
-**Placeholder:** Represents “assistant working” visually only — not tied to a job ID, SSE, or server progress.
+### Home page
 
-### Motion / CSS
+`/app/page.tsx` is the component playground. Dropdown switches between Chatbox states. No routing, no shared state, no context. Extensible via the STATES array.
 
-[`lib/motion.ts`](./lib/motion.ts) exports transitions for layout animation. [`app/globals.css`](./app/globals.css) defines `@keyframes vibeStopDot` for the recording Stop pill dots.
+## What was removed from earlier iterations
 
-## What backend should build next
+- Chat route at `/c/[id]`
+- Canvas panel and auto-open logic
+- Inline chart (CampaignChart) + Pinpoint drill-down menu — stashed in git reflog, recoverable if needed
+- Artifact shelf badge — same
+- Message rendering (MessageBubble, UserMessage, AssistantMessage)
+- Streaming and thinking state machines
+- Custom useChatState hook
 
-- Auth/session (if multi-user).
-- Threads + messages persistence; id generation aligned with URLs if desired.
-- Assistant completions (streaming), tool use, cancellation.
-- Optional: voice pipeline if mic becomes real.
+If engineers want any of those back, they can be restored from the stash `broken-refactor-2026-04-18` or rebuilt cleanly.
 
-## What frontend should build next
+## Next steps for engineers
 
-- Wire `Chatbox` submit to API; render assistant tokens/messages from server state.
-- Replace fake “thinking” with real loading/streaming signals from backend.
-- Canvas panel: embed real widgets or iframe when backend provides artifact URLs.
-- Remove or gate demo timers when prod behavior ships.
+1. Decide routing model — likely `/`, `/c/[id]` for chats, and a sidebar-driven chat list
+2. Build API route for chat streaming
+3. Build conversation persistence
+4. Wire Chatbox's `onSend` to the real chat backend
+5. Add `AssistantMessage` and `UserMessage` components as they make sense in your component library
+6. Restore chart + Pinpoint interaction when ready (reference commit 1fce7b5's stashed content)
+
+## Key decisions preserved
+
+- `docs/adr/0001-nextjs-app-router.md` — App Router over Pages Router
+- `docs/adr/0002-shadcn-radix-nova.md` — shadcn/ui + Radix
+- `docs/adr/0003-tailwind-v4.md` — Tailwind v4
+- `CLAUDE.md` — AI assistant rules for this repo
+
+## Getting started
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Visit `/`. You see the playground.

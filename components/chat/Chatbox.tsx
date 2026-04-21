@@ -7,9 +7,18 @@ import {
   useState,
   type ChangeEvent,
   type KeyboardEvent,
+  type ReactNode,
 } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import { cn } from "@/lib/utils"
+
+export type ChatboxChip = {
+  label: string
+  icon?: ReactNode
+  onRemove?: () => void
+  /** Campaign planner: blue square icon slot with month short + day; label stacks vertically beside it */
+  plannerDate?: { monthShort: string; day: number }
+}
 
 const MAX_HEIGHT_PX = 200
 
@@ -29,30 +38,55 @@ const LISTENING_PLACEHOLDER: Placeholder = {
   isSuggestion: false,
 }
 
-const ROTATE_INTERVAL_MS = 5000
+const ROTATE_INTERVAL_MS = 3500
 
 export type ChatboxProps = {
   onSend?: (text: string) => void
   disabled?: boolean
+  rotatePlaceholder?: boolean
+  value?: string
+  onValueChange?: (next: string) => void
+  chip?: ChatboxChip | null
 }
 
-export function Chatbox({ onSend, disabled = false }: ChatboxProps) {
-  const [value, setValue] = useState("")
+export function Chatbox({
+  onSend,
+  disabled = false,
+  rotatePlaceholder = true,
+  value: valueProp,
+  onValueChange,
+  chip = null,
+}: ChatboxProps) {
+  const [internalValue, setInternalValue] = useState("")
+  const isControlled = valueProp !== undefined
+  const value = isControlled ? valueProp : internalValue
+
+  const setTextValue = useCallback(
+    (next: string) => {
+      if (isControlled) {
+        onValueChange?.(next)
+      } else {
+        setInternalValue(next)
+      }
+    },
+    [isControlled, onValueChange],
+  )
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
   const [isRecording, setIsRecording] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   const hasText = value.trim().length > 0
   const rotatingPlaceholder = PLACEHOLDERS[placeholderIndex]
-  const displayedPlaceholder = isRecording ? LISTENING_PLACEHOLDER : rotatingPlaceholder
+  const recordingActive = isRecording && !disabled
+  const displayedPlaceholder = recordingActive ? LISTENING_PLACEHOLDER : rotatingPlaceholder
 
   const submitMessage = useCallback(() => {
     if (disabled) return
     const text = value.trim()
     if (!text) return
     onSend?.(text)
-    setValue("")
-  }, [value, onSend, disabled])
+    setTextValue("")
+  }, [value, onSend, disabled, setTextValue])
 
   const autogrow = useCallback(() => {
     const el = textareaRef.current
@@ -68,15 +102,17 @@ export function Chatbox({ onSend, disabled = false }: ChatboxProps) {
   }, [value, autogrow])
 
   useEffect(() => {
+    if (disabled) return
     if (hasText || isRecording) return
+    if (!rotatePlaceholder) return
     const id = window.setInterval(() => {
       setPlaceholderIndex((i) => (i + 1) % PLACEHOLDERS.length)
     }, ROTATE_INTERVAL_MS)
     return () => window.clearInterval(id)
-  }, [hasText, isRecording])
+  }, [disabled, hasText, isRecording, rotatePlaceholder])
 
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    setValue(e.target.value)
+    setTextValue(e.target.value)
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -86,10 +122,10 @@ export function Chatbox({ onSend, disabled = false }: ChatboxProps) {
       submitMessage()
       return
     }
-    if (e.key === "Tab" && !hasText && !isRecording && rotatingPlaceholder?.isSuggestion) {
+    if (e.key === "Tab" && !hasText && !recordingActive && rotatingPlaceholder?.isSuggestion) {
       e.preventDefault()
       const text = rotatingPlaceholder.text
-      setValue(text)
+      setTextValue(text)
       requestAnimationFrame(() => {
         const el = textareaRef.current
         if (!el) return
@@ -103,19 +139,71 @@ export function Chatbox({ onSend, disabled = false }: ChatboxProps) {
   const stopRecording = () => setIsRecording(false)
 
   const showPlaceholder = !hasText
-  const showTabHint = showPlaceholder && !isRecording && rotatingPlaceholder?.isSuggestion === true
-  const placeholderKey = isRecording ? "listening" : `rotating-${placeholderIndex}`
+  const showTabHint =
+    !disabled &&
+    rotatePlaceholder &&
+    showPlaceholder &&
+    !recordingActive &&
+    rotatingPlaceholder?.isSuggestion === true
+  const placeholderKey = recordingActive ? "listening" : `rotating-${placeholderIndex}`
 
   return (
     <div
-      className={cn(
-        "w-full max-w-[720px] rounded-[24px] bg-white",
-        disabled && "pointer-events-none opacity-60",
-      )}
+      className={cn("w-full max-w-[720px] rounded-[24px] bg-white")}
       style={{
         boxShadow: "0 8px 32px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04)",
       }}
     >
+      {chip && (
+        <div className="chatbox-chip-row flex px-4 pt-4 pb-2">
+          <span
+            className={cn(
+              "chatbox-chip inline-flex items-center gap-1.5 rounded-sm bg-black/5 px-1 py-1 text-[12px] leading-[1.3] font-medium text-[#737373]",
+            )}
+          >
+            {chip.plannerDate ? (
+              <span
+                className="chatbox-chip-icon chatbox-chip-icon-planner inline-flex h-[28px] w-[28px] shrink-0 flex-col items-center justify-center rounded-[4px] bg-[#0a84ff] p-px text-white"
+                aria-hidden="true"
+              >
+                <span className="text-[7px] leading-none font-semibold tracking-wide uppercase">
+                  {chip.plannerDate.monthShort}
+                </span>
+                <span className="text-[12px] leading-none font-bold tabular-nums">
+                  {chip.plannerDate.day}
+                </span>
+              </span>
+            ) : (
+              chip.icon && (
+                <span
+                  className="chatbox-chip-icon inline-flex shrink-0 items-center justify-center rounded-[4px] bg-white p-1 text-black/55"
+                  aria-hidden="true"
+                >
+                  {chip.icon}
+                </span>
+              )
+            )}
+            <span className="chatbox-chip-label max-w-[240px] truncate">{chip.label}</span>
+            {chip.onRemove && (
+              <button
+                type="button"
+                onClick={chip.onRemove}
+                aria-label="Remove attachment"
+                className="chatbox-chip-close ml-0.5 flex h-3 w-3 items-center justify-center rounded-sm bg-[#e8e8e8] text-[#737373] transition-colors hover:bg-gray-300 hover:text-gray-900"
+              >
+                <svg width="6" height="6" viewBox="0 0 9 9" fill="none" aria-hidden="true">
+                  <path
+                    d="M2 2l5 5M7 2l-5 5"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
+            )}
+          </span>
+        </div>
+      )}
       <div className="relative px-5 pt-4">
         <textarea
           ref={textareaRef}
@@ -123,55 +211,82 @@ export function Chatbox({ onSend, disabled = false }: ChatboxProps) {
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           rows={1}
-          disabled={disabled || isRecording}
+          disabled={isRecording}
           className={cn(
             "text-foreground block w-full resize-none border-0 bg-transparent p-0 text-[15px] leading-[1.65] outline-none",
-            disabled ? "cursor-not-allowed" : "disabled:cursor-default",
+            isRecording ? "cursor-not-allowed" : "disabled:cursor-default",
           )}
           aria-label="Message input"
         />
-        {showPlaceholder && (
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-5 top-4 overflow-hidden"
-            style={{ height: "calc(15px * 1.65)" }}
-          >
-            <AnimatePresence mode="popLayout" initial={false}>
-              <motion.div
-                key={placeholderKey}
-                initial={{ y: "100%", opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: "-100%", opacity: 0 }}
-                transition={{
-                  y: { type: "spring", stiffness: 500, damping: 40 },
-                  opacity: { duration: 0.2 },
-                }}
-                className="flex items-center gap-2"
+        {showPlaceholder &&
+          (disabled ? (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-5 top-4"
+              style={{ height: "calc(15px * 1.65)" }}
+            >
+              <span
+                className="block truncate text-[15px] leading-[1.65]"
+                style={{ color: "rgba(0,0,0,0.4)" }}
               >
-                <motion.span
-                  animate={{
-                    color: ["rgba(0,0,0,0.35)", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.35)"],
-                  }}
+                Ask a follow-up question
+              </span>
+            </div>
+          ) : rotatePlaceholder ? (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-5 top-4 overflow-hidden"
+              style={{ height: "calc(15px * 1.65)" }}
+            >
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.div
+                  key={placeholderKey}
+                  initial={{ y: "100%", opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: "-100%", opacity: 0 }}
                   transition={{
-                    color: {
-                      duration: 2.5,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    },
+                    y: { type: "spring", stiffness: 500, damping: 40 },
+                    opacity: { duration: 0.2 },
                   }}
-                  className="truncate text-[15px] leading-[1.65]"
+                  className="flex items-center gap-2"
                 >
-                  {displayedPlaceholder?.text}
-                </motion.span>
-                {showTabHint && (
-                  <span className="text-muted-foreground inline-flex flex-shrink-0 items-center rounded-[4px] bg-black/5 px-1.5 py-1 text-[10.5px] leading-none font-semibold">
-                    tab
-                  </span>
-                )}
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        )}
+                  <motion.span
+                    animate={{
+                      color: ["rgba(0,0,0,0.35)", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.35)"],
+                    }}
+                    transition={{
+                      color: {
+                        duration: 2.5,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      },
+                    }}
+                    className="truncate text-[15px] leading-[1.65]"
+                  >
+                    {displayedPlaceholder?.text}
+                  </motion.span>
+                  {showTabHint && (
+                    <span className="text-muted-foreground inline-flex flex-shrink-0 items-center rounded-[4px] bg-black/5 px-1.5 py-1 text-[10.5px] leading-none font-semibold">
+                      tab
+                    </span>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          ) : (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-5 top-4"
+              style={{ height: "calc(15px * 1.65)" }}
+            >
+              <span
+                className="block truncate text-[15px] leading-[1.65]"
+                style={{ color: "rgba(0,0,0,0.4)" }}
+              >
+                Ask a follow-up...
+              </span>
+            </div>
+          ))}
       </div>
 
       <div className="flex items-center justify-between px-3 pt-2 pb-3">
@@ -179,7 +294,7 @@ export function Chatbox({ onSend, disabled = false }: ChatboxProps) {
 
         <div className="flex items-center gap-1">
           <AnimatePresence initial={false}>
-            {isRecording && (
+            {recordingActive && (
               <motion.div
                 key="stop-pill"
                 initial={{ width: 0, opacity: 0 }}
@@ -196,12 +311,16 @@ export function Chatbox({ onSend, disabled = false }: ChatboxProps) {
             )}
           </AnimatePresence>
           <MicButton
-            dim={isRecording}
+            dim={recordingActive}
             disabled={disabled}
-            onClick={isRecording ? stopRecording : startRecording}
+            onClick={() => {
+              if (disabled) return
+              if (isRecording) stopRecording()
+              else startRecording()
+            }}
           />
           <AnimatePresence initial={false}>
-            {!isRecording && (
+            {!recordingActive && (
               <motion.div
                 key="send-button"
                 initial={{ width: 0, opacity: 0 }}
@@ -213,7 +332,11 @@ export function Chatbox({ onSend, disabled = false }: ChatboxProps) {
                 }}
                 className="overflow-hidden"
               >
-                <SendButton enabled={hasText && !disabled} onClick={submitMessage} />
+                <SendButton
+                  enabled={hasText && !disabled}
+                  disabled={disabled}
+                  onClick={submitMessage}
+                />
               </motion.div>
             )}
           </AnimatePresence>
@@ -312,16 +435,25 @@ function StopPill({ onStop, disabled }: { onStop: () => void; disabled: boolean 
   )
 }
 
-function SendButton({ enabled, onClick }: { enabled: boolean; onClick: () => void }) {
+function SendButton({
+  enabled,
+  disabled,
+  onClick,
+}: {
+  enabled: boolean
+  disabled: boolean
+  onClick: () => void
+}) {
+  const inactive = !enabled || disabled
   return (
     <button
       type="button"
       aria-label="Send message"
-      disabled={!enabled}
-      onClick={onClick}
+      disabled={inactive}
+      onClick={inactive ? undefined : onClick}
       className={[
         "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full transition-colors",
-        enabled
+        enabled && !disabled
           ? "bg-foreground text-background hover:opacity-90"
           : "text-muted-foreground cursor-not-allowed bg-black/5",
       ].join(" ")}
