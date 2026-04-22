@@ -61,7 +61,7 @@ const REOPENED_BY_WEEK: ChartDatum[] = [
 
 type DashboardProps = {
   onPinpointSelect: (payload: { chartTitle: string; datum: ChartDatum; prompt: string }) => void
-  /** Tighter layout when the Ask-AI side panel is open (narrower main column). */
+  /** Tighter layout when the Ask vibe side panel is open (narrower main column). */
   sidePanelOpen?: boolean
 }
 
@@ -172,8 +172,8 @@ export function InboxAnalyticsDashboard({
           className="mt-2 border-t border-black/[0.06] pt-6 text-[11px] leading-relaxed text-black/35"
           style={{ paddingBottom: compact ? 8 : 16 }}
         >
-          Figures are illustrative for this playground. Pinpoint any bar or point to ask the AI
-          about that slice.
+          Figures are illustrative for this playground. Pinpoint any bar or point to ask vibe about
+          that slice.
         </footer>
       </div>
     </div>

@@ -2,7 +2,7 @@
 
 /**
  * SidePanelChat — a 420px right-side panel chat interface for analytics
- * pages. Header with AiPulse halo + "Ask the AI" + close button. Empty
+ * pages. Header with AiPulse halo + "Ask vibe" + close button. Empty
  * stream with placeholder copy until the user sends. Composer at bottom
  * with chip + prefilled prompt.
  *
@@ -49,7 +49,7 @@ export function SidePanelChat({
         transition: `transform ${SIDEPANEL_DURATION} ${SIDEPANEL_EASE}`,
         pointerEvents: open ? "auto" : "none",
       }}
-      aria-label="Ask the AI"
+      aria-label="Ask vibe"
     >
       <header
         className="sidepanel-chat-head flex items-center justify-between"
@@ -79,7 +79,7 @@ export function SidePanelChat({
               color: "rgba(0,0,0,0.85)",
             }}
           >
-            Ask the AI
+            Ask vibe
           </span>
         </div>
         <button
