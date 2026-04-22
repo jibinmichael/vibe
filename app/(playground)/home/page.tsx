@@ -5,12 +5,31 @@
  * homepage-level components into a single vertically-centered layout.
  *
  * Engineers see how the pieces fit together on the actual landing page.
- * Currently: AiPulse → tagline → Chatbox, stacked vertically with generous spacing.
+ * Currently: AiPulse → tagline → Chatbox → artifact feed (Feed), stacked vertically.
  */
 
 import { useState } from "react"
 import { AiPulse } from "@/components/ai/AiPulse"
 import { Chatbox } from "@/components/chat/Chatbox"
+import { Feed, type FeedItem } from "@/components/feed/Feed"
+
+const ARTIFACT_FEED_ITEMS: FeedItem[] = [
+  {
+    id: "feed-1",
+    eyebrow: "Unanswered queue",
+    title: "19 replies sitting over 12 hours, longest is 31h",
+  },
+  {
+    id: "feed-2",
+    eyebrow: "CX score drop",
+    title: "Down 8 points this week, weekend FRT slower",
+  },
+  {
+    id: "feed-3",
+    eyebrow: "Load imbalance",
+    title: "Rahul handling 2.4× the team's average volume",
+  },
+]
 
 export default function HomePlaygroundPage() {
   const [value, setValue] = useState("")
@@ -35,6 +54,9 @@ export default function HomePlaygroundPage() {
             value={value}
             onValueChange={setValue}
           />
+        </div>
+        <div className="home-playground-artifact-feed-slot mt-14 w-full">
+          <Feed items={ARTIFACT_FEED_ITEMS} />
         </div>
       </div>
     </div>
