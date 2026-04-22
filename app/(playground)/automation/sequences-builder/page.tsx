@@ -165,7 +165,7 @@ export default function SequencesBuilderPage() {
 
   useEffect(() => {
     if (userMessages.length === 0) return
-    let intervalId: ReturnType<typeof setInterval> | undefined
+    let intervalId: number | undefined
     const timeoutId = window.setTimeout(() => {
       setPhase(0)
       intervalId = window.setInterval(() => setPhase((p) => ((p + 1) % 3) as Phase), CYCLE_MS)

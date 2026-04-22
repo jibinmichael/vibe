@@ -148,7 +148,7 @@ export default function AutomationBuildRulesPage() {
 
   useEffect(() => {
     if (userMessages.length === 0) return
-    let intervalId: ReturnType<typeof setInterval> | undefined
+    let intervalId: number | undefined
     const timeoutId = window.setTimeout(() => {
       setRuleCyclePhase(0)
       intervalId = window.setInterval(() => {
