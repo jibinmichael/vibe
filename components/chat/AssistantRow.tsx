@@ -48,13 +48,7 @@ export function AssistantRow(props: AssistantRowProps) {
                 : {})}
             />
           ) : (
-            <div
-              style={{
-                fontSize: 14,
-                lineHeight: 1.55,
-                color: "rgba(0,0,0,0.8)",
-              }}
-            >
+            <div className="chat-surface text-foreground/90" style={{ lineHeight: 1.5 }}>
               {props.text}
             </div>
           )}

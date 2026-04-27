@@ -156,7 +156,7 @@ export function AutomationAiSidePanel({
         }}
       >
         {userMessages.map((text, i) => (
-          <UserRow key={`${i}-${text}`} text={text} variant="automation" />
+          <UserRow key={`${i}-${text}`} text={text} />
         ))}
         {userMessages.length > 0 ? (
           streamFooter !== undefined ? (

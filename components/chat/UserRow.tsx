@@ -13,28 +13,22 @@
 
 type UserRowProps = {
   text: string
-  /** Automation builders use a tighter 13px type scale. */
-  variant?: "default" | "automation"
 }
 
-export function UserRow({ text, variant = "default" }: UserRowProps) {
-  const fontSize = variant === "automation" ? 13 : 14
-
+export function UserRow({ text }: UserRowProps) {
   return (
     <div
       className="chat-row chat-row-user flex w-full justify-end"
       style={{ padding: "16px 18px" }}
     >
       <div
-        className="chat-user-bubble"
+        className="chat-surface chat-user-bubble text-foreground"
         style={{
           maxWidth: "60%",
           padding: "9px 14px",
           background: "rgba(0,0,0,0.06)",
           borderRadius: "14px 14px 4px 14px",
-          fontSize,
           lineHeight: 1.45,
-          color: "rgba(0,0,0,0.88)",
           wordBreak: "break-word",
         }}
       >

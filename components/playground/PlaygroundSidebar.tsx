@@ -4,8 +4,9 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import type { LucideIcon } from "lucide-react"
 import {
+  AudioLines,
   BarChart3,
-  Bot,
+  CupSoda,
   FileBox,
   GitBranch,
   Home,
@@ -29,11 +30,12 @@ const PLAYGROUND_NAV: NavItem[] = [
   { path: "/analytics", label: "Analytics", icon: BarChart3 },
   { path: "/fab", label: "FAB", icon: MousePointer2 },
   { path: "/campaign-planner", label: "Campaign planner", icon: LayoutList },
-  { path: "/automation", label: "Automation", icon: Bot },
+  { path: "/automation", label: "Automation", icon: AudioLines },
   { path: "/automation/chatbot-builder", label: "Chatbot builder", icon: ListTree },
   { path: "/automation/sequences-builder", label: "Sequences builder", icon: GitBranch },
   { path: "/automation/build-rules", label: "Build rules", icon: Settings2 },
   { path: "/home", label: "Home page", icon: Home },
+  { path: "/vibe", label: "Vibe", icon: CupSoda },
   { path: "/conversation", label: "Conversation", icon: StickyNote },
   { path: "/artifact", label: "Artifact", icon: FileBox },
   { path: "/", label: "Chatbox", icon: MessageSquare },

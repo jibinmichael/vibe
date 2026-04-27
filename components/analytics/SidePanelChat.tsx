@@ -11,10 +11,11 @@
  * to drill into any data point.
  */
 
+import {
+  AUTOMATION_SIDEPANEL_DURATION,
+  AUTOMATION_SIDEPANEL_EASE,
+} from "@/components/automation/automationShared"
 import { Chatbox, type ChatboxChip } from "@/components/chat/Chatbox"
-
-const SIDEPANEL_EASE = "cubic-bezier(0.34, 1.28, 0.64, 1)"
-const SIDEPANEL_DURATION = "0.52s"
 
 type SidePanelChatProps = {
   open: boolean
@@ -33,7 +34,7 @@ export function SidePanelChat({
 }: SidePanelChatProps) {
   return (
     <aside
-      className="sidepanel-chat flex flex-col"
+      className="sidepanel-chat chat-surface border-border bg-background text-foreground flex flex-col border-l antialiased"
       aria-hidden={!open}
       style={{
         position: "fixed",
@@ -42,43 +43,25 @@ export function SidePanelChat({
         bottom: 0,
         width: 420,
         zIndex: 40,
-        background: "#fff",
-        borderLeft: "1px solid rgba(0,0,0,0.06)",
         minHeight: 0,
         transform: open ? "translate3d(0,0,0)" : "translate3d(100%,0,0)",
-        transition: `transform ${SIDEPANEL_DURATION} ${SIDEPANEL_EASE}`,
+        transition: `transform ${AUTOMATION_SIDEPANEL_DURATION} ${AUTOMATION_SIDEPANEL_EASE}`,
         pointerEvents: open ? "auto" : "none",
       }}
       aria-label="Ask vibe"
     >
-      <header
-        className="sidepanel-chat-head flex items-center justify-between"
-        style={{
-          padding: "16px 20px",
-          borderBottom: "1px solid rgba(0,0,0,0.06)",
-        }}
-      >
-        <div className="sidepanel-chat-title flex items-center" style={{ gap: 10 }}>
+      <header className="sidepanel-chat-head border-border flex items-center justify-between border-b px-5 py-4">
+        <div className="sidepanel-chat-title flex items-center gap-2.5">
           <span
-            className="sidepanel-chat-halo"
+            className="sidepanel-chat-halo inline-block size-[22px] shrink-0 rounded-full"
             aria-hidden="true"
             style={{
-              width: 22,
-              height: 22,
-              borderRadius: "50%",
               background:
                 "conic-gradient(from 0deg, rgba(10,132,255,0.35), rgba(90,170,255,0.2), rgba(191,216,245,0.3), rgba(10,132,255,0.35))",
               filter: "blur(3px)",
-              display: "inline-block",
             }}
           />
-          <span
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: "rgba(0,0,0,0.85)",
-            }}
-          >
+          <span className="text-foreground text-[length:var(--text-chat)] leading-[var(--text-chat--line-height)] font-semibold">
             Ask vibe
           </span>
         </div>
@@ -86,47 +69,19 @@ export function SidePanelChat({
           type="button"
           onClick={onClose}
           aria-label="Close panel"
-          style={{
-            border: "none",
-            background: "transparent",
-            width: 28,
-            height: 28,
-            borderRadius: 6,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            color: "rgba(0,0,0,0.5)",
-            fontSize: 14,
-          }}
+          className="text-muted-foreground hover:bg-muted hover:text-foreground inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-[length:var(--text-chat)] leading-none transition-colors"
         >
           ×
         </button>
       </header>
 
-      <div
-        className="sidepanel-chat-stream min-h-0 flex-1"
-        style={{
-          overflowY: "auto",
-          padding: "40px 20px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <p
-          style={{
-            fontSize: 12.5,
-            color: "rgba(0,0,0,0.4)",
-            textAlign: "center",
-            lineHeight: 1.5,
-          }}
-        >
+      <div className="sidepanel-chat-stream flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-5 py-10">
+        <p className="text-muted-foreground text-center text-[length:var(--text-chat)] leading-[var(--text-chat--line-height)]">
           Send your question to start
         </p>
       </div>
 
-      <div className="sidepanel-chat-composer-dock shrink-0" style={{ padding: "12px 16px 16px" }}>
+      <div className="sidepanel-chat-composer-dock shrink-0 px-4 pt-3 pb-4">
         <Chatbox
           onSend={(text) => alert(`Sent: ${text}`)}
           rotatePlaceholder={false}

@@ -9,10 +9,14 @@
  */
 
 import { useState, type ReactElement } from "react"
-import type { ChatboxChip } from "@/components/chat/Chatbox"
-import type { ChartDatum } from "@/components/chat/ChartArtifact"
 import { InboxAnalyticsDashboard } from "@/components/analytics/InboxAnalyticsDashboard"
 import { SidePanelChat } from "@/components/analytics/SidePanelChat"
+import {
+  AUTOMATION_SIDEPANEL_DURATION,
+  AUTOMATION_SIDEPANEL_EASE,
+} from "@/components/automation/automationShared"
+import type { ChatboxChip } from "@/components/chat/Chatbox"
+import type { ChartDatum } from "@/components/chat/ChartArtifact"
 
 export default function AnalyticsPlaygroundPage() {
   const [panelOpen, setPanelOpen] = useState(false)
@@ -59,7 +63,7 @@ export default function AnalyticsPlaygroundPage() {
           flex: 1,
           minWidth: 0,
           paddingRight: panelOpen ? 420 : 0,
-          transition: "padding-right 0.52s cubic-bezier(0.34, 1.28, 0.64, 1)",
+          transition: `padding-right ${AUTOMATION_SIDEPANEL_DURATION} ${AUTOMATION_SIDEPANEL_EASE}`,
         }}
       >
         <InboxAnalyticsDashboard

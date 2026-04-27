@@ -149,7 +149,7 @@ export function Chatbox({
 
   return (
     <div
-      className={cn("w-full max-w-[720px] rounded-[24px] bg-white")}
+      className={cn("chat-surface w-full max-w-[720px] rounded-[24px] bg-white")}
       style={{
         boxShadow: "0 8px 32px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04)",
       }}
@@ -213,7 +213,7 @@ export function Chatbox({
           rows={1}
           disabled={isRecording}
           className={cn(
-            "text-foreground block w-full resize-none border-0 bg-transparent p-0 text-[15px] leading-[1.65] outline-none",
+            "text-foreground block w-full resize-none border-0 bg-transparent p-0 text-[length:var(--text-chat)] leading-[var(--text-chat--line-height)] outline-none",
             isRecording ? "cursor-not-allowed" : "disabled:cursor-default",
           )}
           aria-label="Message input"
@@ -223,12 +223,9 @@ export function Chatbox({
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-x-5 top-4"
-              style={{ height: "calc(15px * 1.65)" }}
+              style={{ height: "var(--chat-line-box)" }}
             >
-              <span
-                className="block truncate text-[15px] leading-[1.65]"
-                style={{ color: "rgba(0,0,0,0.4)" }}
-              >
+              <span className="text-muted-foreground block truncate text-[length:var(--text-chat)] leading-[var(--text-chat--line-height)]">
                 Ask a follow-up question
               </span>
             </div>
@@ -236,7 +233,7 @@ export function Chatbox({
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-x-5 top-4 overflow-hidden"
-              style={{ height: "calc(15px * 1.65)" }}
+              style={{ height: "var(--chat-line-box)" }}
             >
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.div
@@ -261,7 +258,7 @@ export function Chatbox({
                         ease: "easeInOut",
                       },
                     }}
-                    className="truncate text-[15px] leading-[1.65]"
+                    className="truncate text-[length:var(--text-chat)] leading-[var(--text-chat--line-height)]"
                   >
                     {displayedPlaceholder?.text}
                   </motion.span>
@@ -277,12 +274,9 @@ export function Chatbox({
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-x-5 top-4"
-              style={{ height: "calc(15px * 1.65)" }}
+              style={{ height: "var(--chat-line-box)" }}
             >
-              <span
-                className="block truncate text-[15px] leading-[1.65]"
-                style={{ color: "rgba(0,0,0,0.4)" }}
-              >
+              <span className="text-muted-foreground block truncate text-[length:var(--text-chat)] leading-[var(--text-chat--line-height)]">
                 Ask a follow-up...
               </span>
             </div>
@@ -352,7 +346,7 @@ function SkillsButton({ disabled }: { disabled: boolean }) {
       type="button"
       disabled={disabled}
       className={cn(
-        "border-border/80 text-foreground flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] transition-colors hover:bg-black/5",
+        "border-border/80 text-foreground flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[length:var(--text-chat)] transition-colors hover:bg-black/5",
         disabled && "cursor-not-allowed opacity-60",
       )}
       aria-label="Skills"
@@ -415,7 +409,7 @@ function StopPill({ onStop, disabled }: { onStop: () => void; disabled: boolean 
       onClick={onStop}
       aria-label="Stop recording"
       className={cn(
-        "border-border/80 text-foreground mr-1 flex h-8 items-center gap-2 rounded-full border pr-3.5 pl-3 text-[13px] font-medium transition-colors hover:bg-black/5",
+        "border-border/80 text-foreground mr-1 flex h-8 items-center gap-2 rounded-full border pr-3.5 pl-3 text-[length:var(--text-chat)] font-medium transition-colors hover:bg-black/5",
         disabled && "cursor-not-allowed opacity-60",
       )}
     >

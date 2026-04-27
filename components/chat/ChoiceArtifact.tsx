@@ -60,7 +60,7 @@ export function ChoiceArtifact({
 
   return (
     <div
-      className="choice-artifact bg-white"
+      className="choice-artifact chat-surface bg-white"
       style={{
         width: "100%",
         borderRadius: 10,
@@ -114,7 +114,6 @@ export function ChoiceArtifact({
           color: #fff;
         }
         .choice-artifact-label {
-          font-size: 13.5px;
           color: rgba(0,0,0,0.82);
           line-height: 1.4;
         }
@@ -131,12 +130,7 @@ export function ChoiceArtifact({
         }}
       >
         <div className="choice-artifact-title-group flex items-center" style={{ gap: 8 }}>
-          <span
-            className="choice-artifact-title"
-            style={{ fontSize: 12, fontWeight: 600, color: "rgba(0,0,0,0.82)" }}
-          >
-            {title}
-          </span>
+          <span className="choice-artifact-title text-foreground font-semibold">{title}</span>
           <span
             className="choice-artifact-lang-chip"
             style={{
@@ -161,15 +155,7 @@ export function ChoiceArtifact({
         style={{ padding: "14px 16px 16px", display: "flex", flexDirection: "column", gap: 8 }}
       >
         {question && (
-          <p
-            className="choice-artifact-question"
-            style={{
-              fontSize: 13,
-              color: "rgba(0,0,0,0.62)",
-              lineHeight: 1.5,
-              marginBottom: 4,
-            }}
-          >
+          <p className="choice-artifact-question text-muted-foreground mb-1 leading-normal">
             {question}
           </p>
         )}

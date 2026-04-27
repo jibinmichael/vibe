@@ -1,0 +1,24 @@
+/**
+ * Semantic theme tokens — single source for UI font (system) and chat scale.
+ * Components should inherit via .chat-surface or these CSS variables; avoid ad-hoc px.
+ */
+
+:root {
+  --font-ui: system-ui, sans-serif;
+
+  --text-chat: 13px;
+  --text-chat--line-height: 1.5;
+  --text-chat--letter-spacing: 0;
+
+  /** One line of composer text (textarea + placeholders). */
+  --chat-line-box: calc(var(--text-chat) * var(--text-chat--line-height));
+}
+
+@layer components {
+  .chat-surface {
+    font-family: var(--font-ui);
+    font-size: var(--text-chat);
+    line-height: var(--text-chat--line-height);
+    letter-spacing: var(--text-chat--letter-spacing);
+  }
+}

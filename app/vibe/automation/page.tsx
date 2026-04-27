@@ -2,6 +2,6 @@
 
 import { AutomationOverviewContent } from "@/components/automation/AutomationOverviewContent"
 
-export default function AutomationPage() {
-  return <AutomationOverviewContent />
+export default function VibeAutomationPage() {
+  return <AutomationOverviewContent embeddedInVibe />
 }

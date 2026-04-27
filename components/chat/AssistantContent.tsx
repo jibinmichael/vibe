@@ -18,6 +18,8 @@
  *   - chart:   data chart inside the artifact shell
  *
  * See block schema types below.
+ *
+ * Typography inherits from themes.css — system UI + 13px chat scale (.chat-surface).
  */
 
 import type { ReactNode } from "react"
@@ -27,6 +29,7 @@ import {
   type PinpointSelectPayload,
 } from "@/components/chat/ChartArtifact"
 import { ChoiceArtifact, type ChoiceOption } from "@/components/chat/ChoiceArtifact"
+import { cn } from "@/lib/utils"
 
 export type AssistantBlock =
   | { type: "lead"; text: string }
@@ -57,21 +60,12 @@ type AssistantContentProps = {
 
 export function AssistantContent({ blocks, onPinpointSelect }: AssistantContentProps) {
   return (
-    <div className="assistant-content" style={{ color: "rgba(0,0,0,0.82)" }}>
+    <div className={cn("assistant-content chat-surface text-foreground")}>
       {blocks.map((block, i) => {
         switch (block.type) {
           case "lead":
             return (
-              <p
-                key={i}
-                className="assistant-lead"
-                style={{
-                  fontSize: 15,
-                  lineHeight: 1.55,
-                  color: "rgba(0,0,0,0.78)",
-                  marginBottom: 20,
-                }}
-              >
+              <p key={i} className="assistant-lead text-foreground/90 mb-5 font-medium">
                 {renderInline(block.text)}
               </p>
             )
@@ -79,49 +73,20 @@ export function AssistantContent({ blocks, onPinpointSelect }: AssistantContentP
             return (
               <h2
                 key={i}
-                className="assistant-h2"
-                style={{
-                  fontSize: 17,
-                  fontWeight: 600,
-                  lineHeight: 1.35,
-                  color: "rgba(0,0,0,0.9)",
-                  marginTop: 26,
-                  marginBottom: 10,
-                  letterSpacing: "-0.005em",
-                }}
+                className="assistant-h2 text-foreground mt-6 mb-2.5 font-semibold tracking-tight"
               >
                 {block.text}
               </h2>
             )
           case "h3":
             return (
-              <h3
-                key={i}
-                className="assistant-h3"
-                style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  lineHeight: 1.35,
-                  color: "rgba(0,0,0,0.88)",
-                  marginTop: 18,
-                  marginBottom: 8,
-                }}
-              >
+              <h3 key={i} className="assistant-h3 text-foreground mt-4 mb-2 font-semibold">
                 {block.text}
               </h3>
             )
           case "p":
             return (
-              <p
-                key={i}
-                className="assistant-p"
-                style={{
-                  fontSize: 14,
-                  lineHeight: 1.6,
-                  color: "rgba(0,0,0,0.75)",
-                  marginBottom: 14,
-                }}
-              >
+              <p key={i} className="assistant-p text-foreground/90 mb-3.5">
                 {renderInline(block.text)}
                 {block.cite && (
                   <>
@@ -138,20 +103,10 @@ export function AssistantContent({ blocks, onPinpointSelect }: AssistantContentP
             return (
               <ul
                 key={i}
-                className="assistant-list"
-                style={{
-                  fontSize: 14,
-                  lineHeight: 1.6,
-                  color: "rgba(0,0,0,0.75)",
-                  marginTop: 8,
-                  marginBottom: 14,
-                  paddingLeft: 22,
-                  listStyleType: "disc",
-                  listStylePosition: "outside",
-                }}
+                className="assistant-list text-foreground/90 mt-2 mb-3.5 list-outside list-disc pl-[22px]"
               >
                 {block.items.map((item, j) => (
-                  <li key={j} style={{ marginBottom: 8 }}>
+                  <li key={j} className="mb-2">
                     {renderInline(item)}
                   </li>
                 ))}
@@ -161,20 +116,10 @@ export function AssistantContent({ blocks, onPinpointSelect }: AssistantContentP
             return (
               <ol
                 key={i}
-                className="assistant-numbered"
-                style={{
-                  fontSize: 14,
-                  lineHeight: 1.6,
-                  color: "rgba(0,0,0,0.75)",
-                  marginTop: 8,
-                  marginBottom: 14,
-                  paddingLeft: 22,
-                  listStyleType: "decimal",
-                  listStylePosition: "outside",
-                }}
+                className="assistant-numbered text-foreground/90 mt-2 mb-3.5 list-outside list-decimal pl-[22px]"
               >
                 {block.items.map((item, j) => (
-                  <li key={j} style={{ marginBottom: 10 }}>
+                  <li key={j} className="mb-2.5">
                     {renderInline(item)}
                   </li>
                 ))}
@@ -182,7 +127,7 @@ export function AssistantContent({ blocks, onPinpointSelect }: AssistantContentP
             )
           case "chart":
             return (
-              <div key={i} style={{ margin: "16px 0 20px 0" }}>
+              <div key={i} className="my-4 mb-5">
                 <ChartArtifact
                   title={block.title}
                   data={block.data}
@@ -193,7 +138,7 @@ export function AssistantContent({ blocks, onPinpointSelect }: AssistantContentP
             )
           case "choice":
             return (
-              <div key={i} style={{ margin: "16px 0 20px 0" }}>
+              <div key={i} className="my-4 mb-5">
                 <ChoiceArtifact
                   title={block.title}
                   {...(block.question !== undefined ? { question: block.question } : {})}
@@ -213,38 +158,14 @@ export function AssistantContent({ blocks, onPinpointSelect }: AssistantContentP
 
 function CitationChip({ label, url }: { label: string; url?: string }) {
   const inner = (
-    <span
-      className="assistant-cite"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-        background: "rgba(0,0,0,0.04)",
-        borderRadius: 4,
-        padding: "1px 6px 1px 4px",
-        fontSize: 10.5,
-        color: "rgba(0,0,0,0.55)",
-        lineHeight: 1.2,
-        fontWeight: 500,
-        verticalAlign: "middle",
-      }}
-    >
-      <span
-        aria-hidden="true"
-        style={{
-          width: 10,
-          height: 10,
-          borderRadius: 2,
-          background: "rgba(0,0,0,0.15)",
-          flexShrink: 0,
-        }}
-      />
+    <span className="assistant-cite text-muted-foreground inline-flex items-center gap-1 rounded bg-black/[0.04] px-1 py-px align-middle text-[length:var(--text-micro)] leading-tight font-medium">
+      <span aria-hidden="true" className="size-2.5 shrink-0 rounded-sm bg-black/15" />
       {label}
     </span>
   )
   if (url) {
     return (
-      <a href={url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+      <a href={url} target="_blank" rel="noopener noreferrer" className="no-underline">
         {inner}
       </a>
     )
@@ -252,21 +173,19 @@ function CitationChip({ label, url }: { label: string; url?: string }) {
   return inner
 }
 
-// Inline formatting — parses **bold** and *italic* marks.
 function renderInline(text: string): ReactNode {
-  // Split on **bold** and *italic* marks while keeping delimiters.
   const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g)
   return parts.map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return (
-        <strong key={i} style={{ fontWeight: 600, color: "rgba(0,0,0,0.92)" }}>
+        <strong key={i} className="text-foreground font-semibold">
           {part.slice(2, -2)}
         </strong>
       )
     }
     if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
       return (
-        <em key={i} style={{ fontStyle: "italic", color: "rgba(0,0,0,0.82)" }}>
+        <em key={i} className="text-foreground/95 italic">
           {part.slice(1, -1)}
         </em>
       )
