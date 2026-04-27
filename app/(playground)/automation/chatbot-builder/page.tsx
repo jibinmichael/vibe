@@ -1,274 +1,512 @@
 "use client"
 
-import { useEffect, useState, type CSSProperties } from "react"
-import { AnimatePresence, motion } from "motion/react"
-import { GripVertical, ListTree, MessageSquare, Plus, Zap } from "lucide-react"
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react"
+import {
+  ReactFlow,
+  ReactFlowProvider,
+  Background,
+  Handle,
+  Position,
+  useEdgesState,
+  useNodesState,
+  useReactFlow,
+  type Edge,
+  type Node,
+  type NodeProps,
+} from "@xyflow/react"
+import "@xyflow/react/dist/style.css"
+import { ArrowLeftRight, CircleHelp, ListTree, MessageSquare, type LucideIcon } from "lucide-react"
 import { AutomationAiSidePanel } from "@/components/automation/AutomationAiSidePanel"
 import {
   AUTOMATION_DOT_GRID_STYLE,
   AUTOMATION_SIDEPANEL_DURATION,
   AUTOMATION_SIDEPANEL_EASE,
 } from "@/components/automation/automationShared"
+import { ThinkingIndicator } from "@/components/chat/ThinkingIndicator"
 import { PlanWithVibeFab } from "@/components/fab/PlanWithVibeFab"
+import { cn } from "@/lib/utils"
 
 const SIDEPANEL_DURATION = AUTOMATION_SIDEPANEL_DURATION
 const SIDEPANEL_EASE = AUTOMATION_SIDEPANEL_EASE
 
-/** Indigo connectors — aligned with reference (~#6366f1). */
-const FLOW_LINE = "#6366f1"
+const CHATBOT_BUILD_MS = 3800
 
-const CHATBOT_CARD_STYLE_TAG = `
-  @keyframes chatbotBuilderCardScan {
-    0%, 100% { border-color: rgba(0, 0, 0, 0.06); }
-    50% { border-color: rgba(10, 132, 255, 0.45); }
-  }
-  .chatbot-builder-live-node {
-    border-width: 1px;
-    border-style: solid;
-    border-color: rgba(0, 0, 0, 0.06);
-    animation: chatbotBuilderCardScan 4.8s ease-in-out infinite;
-  }
-  .chatbot-builder-live-node[data-scan-index="1"] { animation-delay: 0ms; }
-  .chatbot-builder-live-node[data-scan-index="2"] { animation-delay: 700ms; }
-  .chatbot-builder-live-node[data-scan-index="3"] { animation-delay: 1400ms; }
-  .chatbot-builder-live-node[data-scan-index="4"] { animation-delay: 2100ms; }
-  .chatbot-builder-live-node[data-scan-index="5"] { animation-delay: 2800ms; }
-`
+const CHATBOT_NAME = "Welcome series"
 
-const CYCLE_MS = 2200
+/** Fixed node width — spacing derived so nodes and edges never intersect labels. */
+const NODE_W = 220
+const NODE_BODY_MIN_H = 108
+/** Horizontal gap between nodes in a row */
+const H_GAP = 52
+/** Vertical gap between graph rows */
+const V_ROW = 112
 
-/** Tree order: root bot → 3 user branches → closing bot */
-const STEP_LINES = [
-  { loading: "Opening greeting…", final: "Hi — how can we help today?", kind: "bot" as const },
-  { loading: "Branch A…", final: "Payment issues", kind: "user" as const },
-  { loading: "Branch B…", final: "Can't sign in", kind: "user" as const },
-  { loading: "Branch C…", final: "Something else", kind: "user" as const },
-  { loading: "Acknowledging…", final: "Thanks — we're on it.", kind: "bot" as const },
+/** 11px helper — moon indigo */
+const MOON_INDIGO = "text-[11px] font-normal leading-snug text-[#7174c9]"
+
+type ChatbotCanvasPhase = "ghost" | "building" | "ready"
+
+type ChatbotNodeData = {
+  ghost: boolean
+  step: number
+  help: string
+  title: string
+  subtitle: string
+  icon: LucideIcon
+  iconColor: string
+}
+
+const STEP_DEFS = [
+  {
+    id: "s1",
+    step: 1,
+    help: "Handshake + plan confirmation without needing a reply.",
+    title: "Send a message",
+    subtitle: "Welcome, locale, and expectation in ≤2 bubbles",
+    icon: MessageSquare,
+    iconColor: "#e11d48",
+  },
+  {
+    id: "s2",
+    step: 2,
+    help: "Structured capture into profile.custom_fields.",
+    title: "Ask a question",
+    subtitle: "Use case, company size, implementation window",
+    icon: CircleHelp,
+    iconColor: "#f97316",
+  },
+  {
+    id: "s3",
+    step: 3,
+    help: "Enterprise vs SMB vs ambiguous routing.",
+    title: "Set a condition",
+    subtitle: "Branch on segment + confidence score",
+    icon: ArrowLeftRight,
+    iconColor: "#4f46e5",
+  },
+  {
+    id: "s4a",
+    step: 4,
+    help: "Enterprise path — CSM + security FAQ.",
+    title: "Send a message",
+    subtitle: "VIP: schedule CSM + shortlinks",
+    icon: MessageSquare,
+    iconColor: "#be185d",
+  },
+  {
+    id: "s4b",
+    step: 5,
+    help: "SMB path — self-serve assets.",
+    title: "Send a message",
+    subtitle: "Standard: checklist + Looms",
+    icon: MessageSquare,
+    iconColor: "#ca8a04",
+  },
+  {
+    id: "s4c",
+    step: 6,
+    help: "Fallback — queue for human review.",
+    title: "Send a message",
+    subtitle: "Fallback: collect email + SLA",
+    icon: MessageSquare,
+    iconColor: "#0d9488",
+  },
+  {
+    id: "s5",
+    step: 7,
+    help: "Exit survey; respect stop keyword.",
+    title: "Ask a question",
+    subtitle: "NPS 0–10 + optional free text",
+    icon: CircleHelp,
+    iconColor: "#7c3aed",
+  },
 ] as const
 
-type Phase = 0 | 1 | 2
+const DEFAULT_COMPOSER = [
+  "We need a production WhatsApp onboarding assistant for paid signups (mixed EN-IN / EN-AE).",
+  "",
+  "Objectives:",
+  "• Greet, confirm plan + locale, and set expectations in ≤2 outbound bubbles (typing delay 400–800ms).",
+  "• Ask structured profiling: primary use case, company size bucket, preferred implementation window — persist each answer to `profile.custom_fields` with validation retries.",
+  "• Branch logic: Enterprise (score ≥0.82) → copy that offers CSM scheduling + security FAQ shortlinks; SMB → self-serve checklist + Loom links; ambiguous / low confidence → fallback that collects email for human review and logs intent tags.",
+  "",
+  "Constraints: concise tone; no PII in outbound webhook payloads; honor opt-out/stop; degrade gracefully if templates are throttled.",
+].join("\n")
 
-function CycleBody({
-  loading,
-  finalText,
-  phase,
-}: {
-  loading: string
-  finalText: string
-  phase: Phase
-}) {
-  const showEdit = phase === 2
+/**
+ * Left-to-right spine (s1→s2→s3), parallel branch row (s4a–c), merge to s5 below center.
+ * Uses explicit handles so edges never cut through node bodies.
+ */
+function buildPositions() {
+  const START_X = 64
+  const START_Y = 96
+  const row1y = START_Y
+  const s1 = { x: START_X, y: row1y }
+  const s2 = { x: START_X + NODE_W + H_GAP, y: row1y }
+  const s3 = { x: START_X + 2 * (NODE_W + H_GAP), y: row1y }
+
+  const row2y = row1y + NODE_BODY_MIN_H + 32 + V_ROW
+  const s4a = { x: START_X, y: row2y }
+  const s4b = { x: START_X + NODE_W + H_GAP, y: row2y }
+  const s4c = { x: START_X + 2 * (NODE_W + H_GAP), y: row2y }
+
+  const row3y = row2y + NODE_BODY_MIN_H + 28 + V_ROW
+  const s5 = { x: START_X + NODE_W + H_GAP, y: row3y }
+
+  return { s1, s2, s3, s4a, s4b, s4c, s5 }
+}
+
+function buildGraph(ghost: boolean): { nodes: Node<ChatbotNodeData>[]; edges: Edge[] } {
+  const p = buildPositions()
+
+  const nodes: Node<ChatbotNodeData>[] = STEP_DEFS.map((def) => {
+    const pos =
+      def.id === "s1"
+        ? p.s1
+        : def.id === "s2"
+          ? p.s2
+          : def.id === "s3"
+            ? p.s3
+            : def.id === "s4a"
+              ? p.s4a
+              : def.id === "s4b"
+                ? p.s4b
+                : def.id === "s4c"
+                  ? p.s4c
+                  : p.s5
+
+    return {
+      id: def.id,
+      type: "chatbotBuilder",
+      position: pos,
+      data: {
+        ghost,
+        step: def.step,
+        help: def.help,
+        title: def.title,
+        subtitle: def.subtitle,
+        icon: def.icon,
+        iconColor: def.iconColor,
+      },
+      draggable: true,
+      selectable: true,
+    }
+  })
+
+  const stroke = ghost ? "rgba(99, 102, 241, 0.35)" : "rgba(99, 102, 241, 0.85)"
+  const edgeStyle = ghost ? { stroke, strokeDasharray: "6 4" as const } : { stroke }
+
+  const edges: Edge[] = [
+    {
+      id: "e1",
+      source: "s1",
+      target: "s2",
+      sourceHandle: "r",
+      targetHandle: "l",
+      type: "smoothstep",
+      style: edgeStyle,
+    },
+    {
+      id: "e2",
+      source: "s2",
+      target: "s3",
+      sourceHandle: "r",
+      targetHandle: "l",
+      type: "smoothstep",
+      style: edgeStyle,
+    },
+    {
+      id: "e3a",
+      source: "s3",
+      target: "s4a",
+      sourceHandle: "b",
+      targetHandle: "t",
+      type: "smoothstep",
+      style: edgeStyle,
+    },
+    {
+      id: "e3b",
+      source: "s3",
+      target: "s4b",
+      sourceHandle: "b",
+      targetHandle: "t",
+      type: "smoothstep",
+      style: edgeStyle,
+    },
+    {
+      id: "e3c",
+      source: "s3",
+      target: "s4c",
+      sourceHandle: "b",
+      targetHandle: "t",
+      type: "smoothstep",
+      style: edgeStyle,
+    },
+    {
+      id: "e4a",
+      source: "s4a",
+      target: "s5",
+      sourceHandle: "b",
+      targetHandle: "t",
+      type: "smoothstep",
+      style: edgeStyle,
+    },
+    {
+      id: "e4b",
+      source: "s4b",
+      target: "s5",
+      sourceHandle: "b",
+      targetHandle: "t",
+      type: "smoothstep",
+      style: edgeStyle,
+    },
+    {
+      id: "e4c",
+      source: "s4c",
+      target: "s5",
+      sourceHandle: "b",
+      targetHandle: "t",
+      type: "smoothstep",
+      style: edgeStyle,
+    },
+  ]
+
+  return { nodes, edges }
+}
+
+function ChatbotBuilderNode({ id, data }: NodeProps<Node<ChatbotNodeData>>) {
+  const { ghost, step, help, title, subtitle, icon: Icon, iconColor } = data
+
+  const showTargetTop = id === "s4a" || id === "s4b" || id === "s4c" || id === "s5"
+  const showTargetLeft = id === "s2" || id === "s3"
+  const showSourceRight = id === "s1" || id === "s2"
+  const showSourceBottom = id === "s3" || id === "s4a" || id === "s4b" || id === "s4c"
+
   return (
-    <div className="flex min-h-[52px] flex-col items-center justify-center gap-2 px-2 pt-1 pb-2 text-center">
-      <span
-        className={`line-clamp-3 text-[12px] leading-snug ${phase === 0 ? "animate-pulse text-black/45" : "text-[rgba(0,0,0,0.88)]"}`}
+    <div className="relative" style={{ width: NODE_W }}>
+      {showTargetTop ? (
+        <Handle
+          id="t"
+          type="target"
+          position={Position.Top}
+          className="!h-2 !w-2 !border-0 !bg-indigo-400"
+        />
+      ) : null}
+      {showTargetLeft ? (
+        <Handle
+          id="l"
+          type="target"
+          position={Position.Left}
+          className="!h-2 !w-2 !border-0 !bg-indigo-400"
+        />
+      ) : null}
+      <div
+        className={cn(
+          "rounded-xl border bg-white px-3 py-2.5 shadow-[0_2px_10px_rgba(0,0,0,0.06)]",
+          ghost ? "border-dashed border-indigo-300/55" : "border-black/[0.08]",
+        )}
+        style={{ minHeight: NODE_BODY_MIN_H }}
       >
-        {phase === 0 ? loading : finalText}
-      </span>
-      <motion.span
-        className="inline-flex shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
-        animate={{ opacity: showEdit ? 1 : 0, scale: showEdit ? 1 : 0.85 }}
-        transition={{ duration: 0.28, ease: [0.34, 1.28, 0.64, 1] }}
-        style={{ pointerEvents: showEdit ? "auto" : "none" }}
-      >
-        Edit
-      </motion.span>
+        {ghost ? (
+          <div className="flex gap-2.5">
+            <div className="flex h-9 w-9 shrink-0 animate-pulse rounded-full bg-black/[0.07]" />
+            <div className="min-w-0 flex-1 space-y-2 pt-0.5">
+              <div className="h-2 w-[40%] rounded bg-[#7174c9]/30" />
+              <div className="h-3 w-[92%] rounded bg-black/10" />
+              <div className="h-2.5 w-[78%] rounded bg-black/[0.07]" />
+            </div>
+          </div>
+        ) : (
+          <div className="flex gap-2.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black/[0.06]">
+              <Icon
+                className="size-[18px]"
+                strokeWidth={2}
+                aria-hidden
+                style={{ color: iconColor }}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className={MOON_INDIGO}>
+                Step {step} · {help}
+              </p>
+              <p className="mt-1 text-[13px] leading-snug font-semibold text-[rgba(0,0,0,0.88)]">
+                {title}
+              </p>
+              <p className="mt-0.5 text-[11px] leading-snug text-black/50">{subtitle}</p>
+            </div>
+          </div>
+        )}
+      </div>
+      {showSourceRight ? (
+        <Handle
+          id="r"
+          type="source"
+          position={Position.Right}
+          className="!h-2 !w-2 !border-0 !bg-indigo-400"
+        />
+      ) : null}
+      {showSourceBottom ? (
+        <Handle
+          id="b"
+          type="source"
+          position={Position.Bottom}
+          className="!h-2 !w-2 !border-0 !bg-indigo-400"
+        />
+      ) : null}
     </div>
   )
 }
 
-/** Stepped fork: one trunk down → horizontal → three stubs down (reference-style). */
-function ForkConnectorThree() {
+const nodeTypes = { chatbotBuilder: ChatbotBuilderNode }
+
+function ChatbotReactFlowInner({ showLive }: { showLive: boolean }) {
+  const ghost = !showLive
+  const { fitView } = useReactFlow()
+  const { nodes: nextNodes, edges: nextEdges } = useMemo(() => buildGraph(ghost), [ghost])
+  const [nodes, setNodes, onNodesChange] = useNodesState(nextNodes)
+  const [edges, setEdges, onEdgesChange] = useEdgesState(nextEdges)
+
+  useEffect(() => {
+    setNodes(nextNodes)
+    setEdges(nextEdges)
+  }, [nextNodes, nextEdges, setNodes, setEdges])
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      void fitView({ padding: 0.2, duration: 280 })
+    }, 60)
+    return () => window.clearTimeout(id)
+  }, [showLive, fitView])
+
   return (
-    <svg
-      width={320}
-      height={44}
-      viewBox="0 0 320 44"
-      className="mx-auto shrink-0 text-[#6366f1]"
-      aria-hidden
+    <ReactFlow
+      className="h-full w-full touch-none"
+      nodes={nodes}
+      edges={edges}
+      onNodesChange={onNodesChange}
+      onEdgesChange={onEdgesChange}
+      nodeTypes={nodeTypes}
+      nodesDraggable
+      nodesConnectable={false}
+      elementsSelectable
+      panOnScroll
+      zoomOnScroll
+      zoomOnPinch
+      minZoom={0.25}
+      maxZoom={1.35}
+      proOptions={{ hideAttribution: true }}
     >
-      <path
-        d="M 160 0 L 160 14 L 52 14 L 52 44 M 160 14 L 160 44 M 160 14 L 268 14 L 268 44"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity={0.88}
-      />
-    </svg>
+      <Background gap={14} size={1} color="rgba(0,0,0,0.06)" />
+    </ReactFlow>
   )
 }
 
-function VerticalConnector({ dashed }: { dashed?: boolean }) {
+function ChatbotFlowCanvas({ showLive }: { showLive: boolean }) {
   return (
-    <div className="flex justify-center py-0.5" aria-hidden>
-      <div
-        className={`h-7 w-0.5 rounded-full ${dashed ? "border-l border-dashed border-black/25 bg-transparent" : ""}`}
-        style={dashed ? undefined : { background: FLOW_LINE, opacity: 0.9 }}
-      />
+    <div className="h-full min-h-0 w-full bg-white">
+      <ReactFlowProvider>
+        <ChatbotReactFlowInner showLive={showLive} />
+      </ReactFlowProvider>
     </div>
   )
 }
 
-const NODE_W = "w-[168px]"
-
-function GhostSquareNode({ kind, delay }: { kind: "bot" | "user"; delay: number }) {
-  const label = kind === "bot" ? "Bot Says:" : "User Clicks:"
+function ChatbotBuildAgentResponse() {
+  const mono = "font-mono text-[13px] font-[450]"
   return (
-    <motion.div
-      className={`${NODE_W} overflow-hidden rounded-lg border border-dashed border-black/18 bg-white/75 shadow-[0_1px_6px_rgba(0,0,0,0.05)]`}
-      animate={{ opacity: [0.38, 0.58, 0.38] }}
-      transition={{ duration: 2.35, repeat: Infinity, ease: "easeInOut", delay }}
-    >
+    <div className="w-full" style={{ padding: "8px 18px 16px" }}>
       <div
-        className={`flex items-center justify-between gap-1 border-b border-black/8 px-2.5 py-2 ${kind === "user" ? "text-indigo-600" : "text-black/80"}`}
+        className="w-full rounded-2xl px-4 py-3"
+        style={{
+          background: "rgba(0,0,0,0.04)",
+          border: "1px solid rgba(0,0,0,0.06)",
+        }}
       >
-        <div className="flex min-w-0 items-center gap-2">
-          <span
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${kind === "user" ? "bg-indigo-500 text-white" : "bg-neutral-600 text-white"}`}
-          >
-            {kind === "user" ? (
-              <Zap className="size-3.5" strokeWidth={2} aria-hidden />
-            ) : (
-              <MessageSquare className="size-3.5" strokeWidth={2} aria-hidden />
-            )}
-          </span>
-          <span className="truncate text-[11px] font-semibold">{label}</span>
+        <div className="flex flex-col gap-3">
+          <p className="m-0 text-[13px] leading-[1.5] font-normal text-[rgba(0,0,0,0.88)]">
+            I have created chatbot <span className={`${mono} text-[#0a84ff]`}>{CHATBOT_NAME}</span>
+            {" — "}
+            multi-step flow: welcome send, profiling questions, conditional branch (3 outbound
+            paths), then NPS. You can edit or modify.
+          </p>
+          <p className="m-0 text-[13px] leading-[1.5] font-normal text-[rgba(0,0,0,0.88)]">
+            You can edit or modify, or to start triggering chatbots create a rule.
+          </p>
         </div>
-        <GripVertical className="size-3.5 shrink-0 text-black/25" aria-hidden />
-      </div>
-      <div className="flex flex-col items-center gap-2 px-2 py-3">
-        <div className="h-2 w-[78%] rounded bg-black/10" />
-        <div className="h-2 w-[55%] rounded bg-black/8" />
-      </div>
-    </motion.div>
-  )
-}
-
-function GhostAddMessageNode({ delay }: { delay: number }) {
-  return (
-    <motion.div
-      className={`${NODE_W} rounded-lg border border-dashed border-black/22 bg-transparent px-2 py-4`}
-      animate={{ opacity: [0.35, 0.55, 0.35] }}
-      transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay }}
-    >
-      <div className="flex flex-col items-center gap-1 text-[11px] font-medium text-[#0a84ff]">
-        <Plus className="size-5" strokeWidth={2} aria-hidden />
-        <span>Add Message</span>
-      </div>
-    </motion.div>
-  )
-}
-
-function GhostConnectedChain() {
-  return (
-    <motion.div
-      className="relative z-10 flex w-full max-w-[520px] flex-col items-center px-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.28 }}
-    >
-      <p className="mb-4 text-center text-[11px] font-medium tracking-wide text-black/35">
-        Welcome bot flow
-      </p>
-
-      <GhostSquareNode kind="bot" delay={0} />
-      <VerticalConnector />
-      <ForkConnectorThree />
-      <div className="flex w-full max-w-[380px] flex-wrap justify-center gap-6 pt-1">
-        <GhostSquareNode kind="user" delay={0.15} />
-        <GhostSquareNode kind="user" delay={0.28} />
-        <GhostSquareNode kind="user" delay={0.41} />
-      </div>
-      <VerticalConnector dashed />
-      <GhostAddMessageNode delay={0.5} />
-    </motion.div>
-  )
-}
-
-function LiveSquareNode({
-  line,
-  phase,
-  scanIndex,
-}: {
-  line: (typeof STEP_LINES)[number]
-  phase: Phase
-  scanIndex: number
-}) {
-  const kind = line.kind
-  const label = kind === "bot" ? "Bot Says:" : "User Clicks:"
-  const IconCmp = kind === "bot" ? MessageSquare : Zap
-
-  return (
-    <div
-      className={`chatbot-builder-live-node ${NODE_W} shrink-0 overflow-hidden rounded-lg bg-white shadow-[0_2px_12px_rgba(0,0,0,0.07)]`}
-      data-scan-index={String(scanIndex)}
-    >
-      <div
-        className={`flex items-center justify-between gap-1 border-b border-black/[0.07] px-2.5 py-2 ${kind === "user" ? "text-indigo-600" : "text-black/85"}`}
-      >
-        <div className="flex min-w-0 items-center gap-2">
-          <span
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${kind === "user" ? "bg-indigo-500 text-white" : "bg-neutral-700 text-white"}`}
+        <div className="mt-4 flex w-full flex-col gap-2">
+          <button
+            type="button"
+            className="w-full rounded-lg bg-[#0a84ff] px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#0988f0]"
           >
-            <IconCmp className="size-3.5" strokeWidth={2} aria-hidden />
-          </span>
-          <span className="truncate text-[11px] font-semibold">{label}</span>
+            Edit chatbot
+          </button>
+          <button
+            type="button"
+            className="w-full rounded-lg border border-black/12 bg-white px-4 py-2.5 text-[13px] font-semibold text-[rgba(0,0,0,0.88)] transition-colors hover:bg-black/[0.03]"
+          >
+            Create a rules to trigger chatbot
+          </button>
         </div>
-        <GripVertical className="size-3.5 shrink-0 text-black/30" aria-hidden />
       </div>
-      <CycleBody loading={line.loading} finalText={line.final} phase={phase} />
     </div>
   )
 }
 
 export default function ChatbotBuilderPage() {
   const [panelOpen, setPanelOpen] = useState(true)
-  const [composerValue, setComposerValue] = useState(
-    "Outline a 3-message welcome series for new WhatsApp subscribers",
-  )
+  const [composerValue, setComposerValue] = useState(DEFAULT_COMPOSER)
   const [userMessages, setUserMessages] = useState<string[]>([])
-  const [phase, setPhase] = useState<Phase>(0)
+  const [canvasPhase, setCanvasPhase] = useState<ChatbotCanvasPhase>("ghost")
+  const readyTimerRef = useRef<number | undefined>(undefined)
 
   useEffect(() => {
-    if (userMessages.length === 0) return
-    let intervalId: number | undefined
-    const timeoutId = window.setTimeout(() => {
-      setPhase(0)
-      intervalId = window.setInterval(() => setPhase((p) => ((p + 1) % 3) as Phase), CYCLE_MS)
-    }, 0)
     return () => {
-      window.clearTimeout(timeoutId)
-      if (intervalId !== undefined) window.clearInterval(intervalId)
+      if (readyTimerRef.current !== undefined) {
+        window.clearTimeout(readyTimerRef.current)
+      }
     }
-  }, [userMessages.length])
+  }, [])
 
   const handleClose = () => {
     setPanelOpen(false)
-    setComposerValue("")
+    setComposerValue(DEFAULT_COMPOSER)
+  }
+
+  const handleSend = (text: string) => {
+    setUserMessages((prev) => [...prev, text])
+    setCanvasPhase("building")
+    if (readyTimerRef.current !== undefined) {
+      window.clearTimeout(readyTimerRef.current)
+    }
+    readyTimerRef.current = window.setTimeout(() => {
+      setCanvasPhase("ready")
+      readyTimerRef.current = undefined
+    }, CHATBOT_BUILD_MS)
   }
 
   const chip = {
-    label: "Welcome bot series",
+    label: CHATBOT_NAME,
     icon: <ListTree className="size-3.5 text-neutral-600" aria-hidden strokeWidth={2} />,
   }
 
-  const root = STEP_LINES[0]
-  const branches = [STEP_LINES[1], STEP_LINES[2], STEP_LINES[3]]
-  const closing = STEP_LINES[4]
+  const streamFooter: ReactNode | undefined =
+    userMessages.length === 0 ? undefined : canvasPhase === "building" ? (
+      <div style={{ padding: "16px 4px" }}>
+        <ThinkingIndicator />
+      </div>
+    ) : (
+      <ChatbotBuildAgentResponse />
+    )
+
+  const showLiveFlow = userMessages.length > 0 && canvasPhase === "ready"
 
   return (
-    <div className="flex" style={{ minHeight: "100vh", background: "#F9FAFB" }}>
+    <div className="flex h-dvh max-h-dvh min-h-0 w-full overflow-hidden bg-[#F9FAFB]">
       <main
-        className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-auto overflow-x-hidden"
+        className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
         style={{
-          minWidth: 0,
-          minHeight: "100vh",
-          paddingBottom: 120,
-          paddingLeft: 40,
-          paddingRight: panelOpen ? 420 : 40,
+          paddingRight: panelOpen ? 420 : 0,
           transition: `padding-right ${SIDEPANEL_DURATION} ${SIDEPANEL_EASE}`,
         }}
       >
@@ -278,83 +516,16 @@ export default function ChatbotBuilderPage() {
           aria-hidden
         />
 
-        <AnimatePresence mode="wait">
-          {userMessages.length === 0 ? (
-            <GhostConnectedChain key="ghost" />
-          ) : (
-            <motion.div
-              key={userMessages.length}
-              className="relative z-10 flex w-full max-w-[540px] flex-col items-center px-4 py-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.22 }}
-            >
-              <style dangerouslySetInnerHTML={{ __html: CHATBOT_CARD_STYLE_TAG }} />
-              <p className="mb-4 text-[11px] font-medium tracking-wide text-black/40">
-                Welcome bot series
-              </p>
+        <p
+          className="pointer-events-none absolute top-3 right-0 left-0 z-20 mx-auto max-w-[90vw] text-center text-[11px] font-medium tracking-wide text-black/40"
+          style={{ lineHeight: 1.35 }}
+        >
+          {CHATBOT_NAME}
+        </p>
 
-              <motion.div
-                className="flex justify-center overflow-hidden"
-                initial={{ opacity: 0, scale: 0.92 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.42, ease: [0.34, 1.28, 0.64, 1] }}
-              >
-                <LiveSquareNode line={root} phase={phase} scanIndex={1} />
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.45 }}
-              >
-                <VerticalConnector />
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.55 }}
-              >
-                <ForkConnectorThree />
-              </motion.div>
-
-              <div className="flex w-full max-w-[400px] flex-wrap justify-center gap-6">
-                {branches.map((line, i) => (
-                  <motion.div
-                    key={line.final}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{
-                      delay: 0.65 + i * 0.18,
-                      duration: 0.42,
-                      ease: [0.34, 1.28, 0.64, 1],
-                    }}
-                  >
-                    <LiveSquareNode line={line} phase={phase} scanIndex={i + 2} />
-                  </motion.div>
-                ))}
-              </div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1.15 }}
-              >
-                <VerticalConnector dashed />
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.28, duration: 0.42, ease: [0.34, 1.28, 0.64, 1] }}
-              >
-                <LiveSquareNode line={closing} phase={phase} scanIndex={5} />
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <div className="relative z-10 h-full min-h-0 w-full flex-1 pt-9">
+          <ChatbotFlowCanvas showLive={showLiveFlow} />
+        </div>
       </main>
 
       <AutomationAiSidePanel
@@ -365,8 +536,12 @@ export default function ChatbotBuilderPage() {
         userMessages={userMessages}
         composerValue={composerValue}
         onComposerChange={setComposerValue}
-        onSend={(text) => setUserMessages((prev) => [...prev, text])}
+        onSend={handleSend}
         chip={chip}
+        streamFooter={streamFooter}
+        {...(userMessages.length > 0 && canvasPhase === "ready"
+          ? { streamAutoScrollKey: userMessages.length }
+          : {})}
       />
 
       {!panelOpen && (

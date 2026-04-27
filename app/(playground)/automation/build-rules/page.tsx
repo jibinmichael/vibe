@@ -1,16 +1,21 @@
 "use client"
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react"
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react"
 import { AnimatePresence, motion } from "motion/react"
-import { Check, FileText, Filter, SquareChevronRight } from "lucide-react"
+import { PaperPlaneRight, WhatsappLogo } from "@phosphor-icons/react"
+import { ChevronDown, Filter, SquareChevronRight } from "lucide-react"
 import { Chatbox } from "@/components/chat/Chatbox"
 import { ThinkingIndicator } from "@/components/chat/ThinkingIndicator"
 import { UserRow } from "@/components/chat/UserRow"
 import { PlanWithVibeFab } from "@/components/fab/PlanWithVibeFab"
+import { cn } from "@/lib/utils"
 
 /** Matches automation page sidepanel timing. */
 const SIDEPANEL_EASE = "cubic-bezier(0.34, 1.28, 0.64, 1)"
 const SIDEPANEL_DURATION = "0.52s"
+
+/** Left canvas: ghost animation, then static Zapier-style steps. */
+const RULE_BUILD_ANIMATION_MS = 3800
 
 const DOT_GRID_STYLE: CSSProperties = {
   backgroundColor: "#f4f4f2",
@@ -18,37 +23,7 @@ const DOT_GRID_STYLE: CSSProperties = {
   backgroundSize: "14px 14px",
 }
 
-/** Matches `MonthCalendar` scanning: `monthCalendarCellScan` + 80ms cascade between cells. */
-const RULE_CARD_STYLE_TAG = `
-  @keyframes buildRulesRuleCardScan {
-    0%, 100% {
-      border-color: rgba(0, 0, 0, 0.05);
-    }
-    50% {
-      border-color: rgba(10, 132, 255, 0.45);
-    }
-  }
-  .build-rules-rule-card {
-    border-width: 1px;
-    border-style: solid;
-    border-color: rgba(0, 0, 0, 0.05);
-    animation: buildRulesRuleCardScan 4.8s ease-in-out infinite;
-  }
-  .build-rules-rule-card[data-scan-index="1"] { animation-delay: 0ms; }
-  .build-rules-rule-card[data-scan-index="2"] { animation-delay: 800ms; }
-  .build-rules-rule-card[data-scan-index="3"] { animation-delay: 1600ms; }
-`
-
-/** Same cycle for each row: loading → final copy → Edit; then repeats. */
-const RULE_CARD_CYCLE_MS = 2200
-
-const RULE_CARD_LINES = [
-  { loading: "Identifying trigger…", final: "Trigger added" },
-  { loading: "Applying filters…", final: "Filters applied" },
-  { loading: "Drafting action…", final: "Action added" },
-] as const
-
-type RuleCyclePhase = 0 | 1 | 2
+type RuleCanvasPhase = "ghost" | "building" | "ready"
 
 function RulesGhostCard({ icon, delay }: { icon: ReactNode; delay: number }) {
   return (
@@ -86,18 +61,21 @@ function RuleBuilderGhostCanvas() {
       <div className="w-full">
         <p className="mb-1.5 text-[11px] font-medium tracking-wide text-black/28">When</p>
         <RulesGhostCard
-          icon={<FileText className="size-[18px]" strokeWidth={2} aria-hidden />}
+          icon={<WhatsappLogo size={18} weight="fill" aria-hidden className="text-[#25D366]" />}
           delay={0}
         />
       </div>
-      <RulesGhostCard
-        icon={<Filter className="size-[18px]" strokeWidth={2} aria-hidden />}
-        delay={0.38}
-      />
+      <div className="w-full">
+        <p className="mb-1.5 text-[11px] font-medium tracking-wide text-black/28">Filter</p>
+        <RulesGhostCard
+          icon={<Filter className="size-[18px]" strokeWidth={2} aria-hidden />}
+          delay={0.38}
+        />
+      </div>
       <div className="w-full">
         <p className="mb-1.5 text-[11px] font-medium tracking-wide text-black/28">Then</p>
         <RulesGhostCard
-          icon={<Check className="size-[18px]" strokeWidth={2} aria-hidden />}
+          icon={<PaperPlaneRight size={18} weight="fill" aria-hidden className="text-[#e53935]" />}
           delay={0.76}
         />
       </div>
@@ -105,36 +83,243 @@ function RuleBuilderGhostCanvas() {
   )
 }
 
-function RuleCardMainAndEdit({
-  loading,
-  finalText,
-  phase,
+function ZapierChip({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-md bg-[#e8f1ff] px-1.5 py-0.5 text-[12px] font-medium text-[#0a84ff]">
+      {children}
+    </span>
+  )
+}
+
+function DashedRuleConnector() {
+  return (
+    <div className="flex w-full justify-center py-0.5" aria-hidden>
+      <div className="h-5 w-0 border-l border-dashed border-black/18" style={{ marginLeft: 22 }} />
+    </div>
+  )
+}
+
+function RuleStepEditLink() {
+  return (
+    <button
+      type="button"
+      className="mt-2 self-start text-[12px] font-semibold text-[#0a84ff] hover:underline"
+    >
+      Edit
+    </button>
+  )
+}
+
+function BuildRulesFilterAccordion({
+  expanded,
+  onToggle,
 }: {
-  loading: string
-  finalText: string
-  phase: RuleCyclePhase
+  expanded: boolean
+  onToggle: () => void
 }) {
-  const showEdit = phase === 2
+  return (
+    <div
+      className={cn(
+        "w-full overflow-hidden rounded-xl bg-white shadow-[0_2px_14px_rgba(0,0,0,0.06)] transition-[box-shadow,border-color]",
+        expanded
+          ? "ring-2 ring-emerald-500/35 ring-offset-2 ring-offset-[#f4f4f2]"
+          : "border border-black/[0.08]",
+      )}
+    >
+      <div className="px-4 pt-3">
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex w-full items-start gap-3 rounded-lg py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-[#0a84ff]/30"
+          aria-expanded={expanded}
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-red-500">
+            <Filter className="size-[18px]" strokeWidth={2} aria-hidden />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-medium tracking-wide text-black/40">Filter</p>
+            <p className="mt-0.5 text-[13px] leading-snug font-semibold text-[rgba(0,0,0,0.88)]">
+              Continue rule only if <ZapierChip>any</ZapierChip>{" "}
+              <ZapierChip>2 conditions</ZapierChip> are met…
+            </p>
+          </div>
+          <ChevronDown
+            className={cn(
+              "mt-1 size-4 shrink-0 text-black/35 transition-transform",
+              expanded ? "rotate-180" : "",
+            )}
+            strokeWidth={2}
+            aria-hidden
+          />
+        </button>
+        <div className="pb-2 pl-12">
+          <RuleStepEditLink />
+        </div>
+      </div>
+      {expanded ? (
+        <div className="border-t border-black/[0.06] bg-[#fafafa] px-4 py-3">
+          <p className="text-[10px] font-semibold tracking-wider text-black/40 uppercase">
+            Filter details
+          </p>
+          <p className="mt-1 text-[13px] font-semibold text-[rgba(0,0,0,0.88)]">
+            Select your criteria
+          </p>
+          <div className="mt-3 space-y-2.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex min-h-9 min-w-0 flex-1 items-center rounded-lg border border-black/12 bg-white px-2.5 text-[12px] text-black/70">
+                <span className="truncate">Custom segment</span>
+              </div>
+              <div className="flex h-9 min-w-[100px] items-center rounded-lg border border-black/12 bg-white px-2.5 text-[12px] text-black/55">
+                Active Signal — Last updated i…
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex min-h-9 min-w-0 flex-1 items-center rounded-lg border border-black/12 bg-white px-2.5 text-[12px] text-black/70">
+                <span className="truncate">Custom segment</span>
+              </div>
+              <div className="flex h-9 w-20 shrink-0 items-center justify-center rounded-lg border border-black/12 bg-white text-[11px] font-medium text-black/45">
+                Select
+              </div>
+              <div className="flex h-9 min-w-[140px] items-center rounded-lg border border-black/12 bg-white px-2.5 text-[12px] text-black/75">
+                Highly engaged (89)
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="rounded-md border border-black/12 bg-white px-2.5 py-1 text-[11px] font-medium text-black/55"
+            >
+              and +
+            </button>
+            <button
+              type="button"
+              className="rounded-md border border-black/12 bg-white px-2.5 py-1 text-[11px] font-medium text-black/55"
+            >
+              Or +
+            </button>
+          </div>
+          <p className="my-3 text-center text-[11px] font-medium text-black/35">Or continue if</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex min-h-9 min-w-0 flex-1 items-center rounded-lg border border-black/12 bg-white px-2.5 text-[12px] text-black/70">
+              <span className="truncate">Custom segment</span>
+            </div>
+            <div className="flex h-9 min-w-[120px] items-center rounded-lg border border-black/12 bg-white px-2.5 text-[12px] text-black/55">
+              Select value…
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function ZapierRuleStepsCanvas({
+  filterExpanded,
+  onFilterToggle,
+}: {
+  filterExpanded: boolean
+  onFilterToggle: () => void
+}) {
+  return (
+    <motion.div
+      className="relative z-10 flex w-full max-w-[440px] flex-col px-4"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.34, 1.28, 0.64, 1] }}
+    >
+      <div className="w-full">
+        <p className="mb-1.5 text-[11px] font-medium tracking-wide text-black/40">When</p>
+        <div className="rounded-xl border border-black/[0.08] bg-white px-4 py-3 shadow-[0_2px_14px_rgba(0,0,0,0.06)]">
+          <div className="flex gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#25D366] text-white">
+              <WhatsappLogo size={18} weight="fill" aria-hidden className="text-white" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] leading-snug font-semibold text-[rgba(0,0,0,0.88)]">
+                New WhatsApp message is received
+              </p>
+              <p className="mt-1 text-[12px] leading-snug text-black/45">
+                Channel: 17735704742 (+17735704742)
+              </p>
+              <RuleStepEditLink />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <DashedRuleConnector />
+
+      <BuildRulesFilterAccordion expanded={filterExpanded} onToggle={onFilterToggle} />
+
+      <DashedRuleConnector />
+
+      <div className="w-full">
+        <p className="mb-1.5 text-[11px] font-medium tracking-wide text-black/40">Then</p>
+        <div className="rounded-xl border border-black/[0.08] bg-white px-4 py-3 shadow-[0_2px_14px_rgba(0,0,0,0.06)]">
+          <div className="flex gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#e53935] text-white">
+              <PaperPlaneRight size={18} weight="fill" aria-hidden className="text-white" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] leading-snug font-semibold text-[rgba(0,0,0,0.88)]">
+                Send a new WhatsApp message
+              </p>
+              <div className="mt-2">
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-[#0a84ff]/25 bg-[#f3f8ff] px-2 py-1 text-[12px] font-medium text-[#0a84ff]">
+                  <PaperPlaneRight size={14} weight="regular" aria-hidden className="opacity-80" />
+                  Choose message
+                </span>
+              </div>
+              <RuleStepEditLink />
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+function RuleBuildAgentResponse() {
+  const prose = "m-0 text-[13px] font-normal leading-[1.5] text-[rgba(0,0,0,0.88)]"
+  const mono = "font-mono text-[13px] font-[450]"
 
   return (
-    <>
-      <span
-        className={`min-w-0 flex-1 text-[14px] leading-snug ${phase === 0 ? "animate-pulse text-black/45" : "text-[rgba(0,0,0,0.88)]"}`}
-      >
-        {phase === 0 ? loading : finalText}
-      </span>
-      <motion.span
-        className="inline-flex shrink-0 rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700"
-        animate={{
-          opacity: showEdit ? 1 : 0,
-          scale: showEdit ? 1 : 0.85,
+    <div className="w-full" style={{ padding: "8px 18px 16px" }}>
+      <div
+        className="w-full rounded-2xl px-4 py-3"
+        style={{
+          background: "rgba(0,0,0,0.04)",
+          border: "1px solid rgba(0,0,0,0.06)",
         }}
-        transition={{ duration: 0.28, ease: [0.34, 1.28, 0.64, 1] }}
-        style={{ pointerEvents: showEdit ? "auto" : "none" }}
       >
-        Edit
-      </motion.span>
-    </>
+        <div className="flex flex-col gap-3">
+          <p className={prose}>
+            I{"'"}ve created a rule named{" "}
+            <span className={`${mono} text-[#0a84ff]`}>Welcome message</span>.
+          </p>
+          <p className={prose}>
+            <span className="text-[12px] font-medium text-black/45">Trigger</span>
+            <br />
+            <span className={`${mono} text-emerald-700`}>New WhatsApp message is received</span>
+          </p>
+          <p className={prose}>
+            <span className="text-[12px] font-medium text-black/45">Filters</span>
+            <br />
+            <span className={`${mono} text-violet-700`}>Custom segment</span>
+            <span className="text-black/40">: </span>
+            <span className={`${mono} text-indigo-700`}>Highly engaged (89)</span>
+          </p>
+          <p className={prose}>You can edit or modify and publish.</p>
+        </div>
+        <button
+          type="button"
+          className="mt-4 w-full rounded-lg bg-[#0a84ff] px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#0988f0] active:bg-[#0870d6]"
+        >
+          Edit and publish
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -144,22 +329,37 @@ export default function AutomationBuildRulesPage() {
     "Build a welcome message for all new whatsapp contacts",
   )
   const [userMessages, setUserMessages] = useState<string[]>([])
-  const [ruleCyclePhase, setRuleCyclePhase] = useState<RuleCyclePhase>(0)
+  const [ruleCanvasPhase, setRuleCanvasPhase] = useState<RuleCanvasPhase>("ghost")
+  const [filterAccordionOpen, setFilterAccordionOpen] = useState(true)
+  const ruleReadyTimerRef = useRef<number | undefined>(undefined)
+  const ruleStreamRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (userMessages.length === 0) return
-    let intervalId: number | undefined
-    const timeoutId = window.setTimeout(() => {
-      setRuleCyclePhase(0)
-      intervalId = window.setInterval(() => {
-        setRuleCyclePhase((p) => ((p + 1) % 3) as RuleCyclePhase)
-      }, RULE_CARD_CYCLE_MS)
-    }, 0)
     return () => {
-      window.clearTimeout(timeoutId)
-      if (intervalId !== undefined) window.clearInterval(intervalId)
+      if (ruleReadyTimerRef.current !== undefined) {
+        window.clearTimeout(ruleReadyTimerRef.current)
+      }
     }
-  }, [userMessages.length])
+  }, [])
+
+  useEffect(() => {
+    if (ruleCanvasPhase !== "ready" || userMessages.length === 0) return
+    const el = ruleStreamRef.current
+    if (!el) return
+    const scroll = () => {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
+    }
+    let raf2 = 0
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(scroll)
+    })
+    const t = window.setTimeout(scroll, 150)
+    return () => {
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
+      window.clearTimeout(t)
+    }
+  }, [ruleCanvasPhase, userMessages.length])
 
   const handleClose = () => {
     setPanelOpen(false)
@@ -168,6 +368,14 @@ export default function AutomationBuildRulesPage() {
 
   const handleSend = (text: string) => {
     setUserMessages((prev) => [...prev, text])
+    setRuleCanvasPhase("building")
+    if (ruleReadyTimerRef.current !== undefined) {
+      window.clearTimeout(ruleReadyTimerRef.current)
+    }
+    ruleReadyTimerRef.current = window.setTimeout(() => {
+      setRuleCanvasPhase("ready")
+      ruleReadyTimerRef.current = undefined
+    }, RULE_BUILD_ANIMATION_MS)
   }
 
   return (
@@ -189,85 +397,14 @@ export default function AutomationBuildRulesPage() {
         <div className="pointer-events-none absolute inset-0" style={DOT_GRID_STYLE} aria-hidden />
 
         <AnimatePresence mode="wait">
-          {userMessages.length === 0 ? (
-            <RuleBuilderGhostCanvas key="ghost" />
+          {userMessages.length === 0 || ruleCanvasPhase !== "ready" ? (
+            <RuleBuilderGhostCanvas key={`ghost-${userMessages.length}-${ruleCanvasPhase}`} />
           ) : (
-            <motion.div
-              key={userMessages.length}
-              className="relative z-10 flex w-full max-w-[440px] flex-col items-center gap-5 px-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              {/* Border pulse + cascade delays match `MonthCalendar` cell scan (see RULE_CARD_STYLE_TAG). */}
-              <style dangerouslySetInnerHTML={{ __html: RULE_CARD_STYLE_TAG }} />
-
-              <motion.div
-                className="w-full overflow-hidden"
-                initial={{ opacity: 0, maxHeight: 0 }}
-                animate={{ opacity: 1, maxHeight: 160 }}
-                transition={{ delay: 0.42, duration: 0.48, ease: [0.34, 1.28, 0.64, 1] }}
-              >
-                <p className="mb-1.5 text-[11px] font-medium tracking-wide text-black/40">When</p>
-                <div
-                  className="build-rules-rule-card flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-[0_2px_14px_rgba(0,0,0,0.06)]"
-                  data-scan-index="1"
-                >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0a84ff] text-white">
-                    <FileText className="size-[18px]" strokeWidth={2} aria-hidden />
-                  </div>
-                  <RuleCardMainAndEdit
-                    loading={RULE_CARD_LINES[0].loading}
-                    finalText={RULE_CARD_LINES[0].final}
-                    phase={ruleCyclePhase}
-                  />
-                </div>
-              </motion.div>
-
-              <motion.div
-                className="w-full overflow-hidden"
-                initial={{ opacity: 0, maxHeight: 0 }}
-                animate={{ opacity: 1, maxHeight: 120 }}
-                transition={{ delay: 2.35, duration: 0.48, ease: [0.34, 1.28, 0.64, 1] }}
-              >
-                <div
-                  className="build-rules-rule-card flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-[0_2px_14px_rgba(0,0,0,0.06)]"
-                  data-scan-index="2"
-                >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0a84ff] text-white">
-                    <Filter className="size-[18px]" strokeWidth={2} aria-hidden />
-                  </div>
-                  <RuleCardMainAndEdit
-                    loading={RULE_CARD_LINES[1].loading}
-                    finalText={RULE_CARD_LINES[1].final}
-                    phase={ruleCyclePhase}
-                  />
-                </div>
-              </motion.div>
-
-              <motion.div
-                className="w-full overflow-hidden"
-                initial={{ opacity: 0, maxHeight: 0 }}
-                animate={{ opacity: 1, maxHeight: 180 }}
-                transition={{ delay: 4.28, duration: 0.48, ease: [0.34, 1.28, 0.64, 1] }}
-              >
-                <p className="mb-1.5 text-[11px] font-medium tracking-wide text-black/40">Then</p>
-                <div
-                  className="build-rules-rule-card flex items-center gap-3 rounded-xl bg-white px-4 py-3 shadow-[0_2px_14px_rgba(0,0,0,0.06)]"
-                  data-scan-index="3"
-                >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#0a84ff] text-white">
-                    <Check className="size-[18px]" strokeWidth={2} aria-hidden />
-                  </div>
-                  <RuleCardMainAndEdit
-                    loading={RULE_CARD_LINES[2].loading}
-                    finalText={RULE_CARD_LINES[2].final}
-                    phase={ruleCyclePhase}
-                  />
-                </div>
-              </motion.div>
-            </motion.div>
+            <ZapierRuleStepsCanvas
+              key="zapier-steps"
+              filterExpanded={filterAccordionOpen}
+              onFilterToggle={() => setFilterAccordionOpen((o) => !o)}
+            />
           )}
         </AnimatePresence>
       </main>
@@ -343,6 +480,7 @@ export default function AutomationBuildRulesPage() {
         </header>
 
         <div
+          ref={ruleStreamRef}
           className="automation-build-rules-sidepanel-stream flex flex-1 flex-col"
           style={{
             overflowY: "auto",
@@ -352,12 +490,15 @@ export default function AutomationBuildRulesPage() {
           }}
         >
           {userMessages.map((text, i) => (
-            <UserRow key={`${i}-${text}`} text={text} />
+            <UserRow key={`${i}-${text}`} text={text} variant="automation" />
           ))}
-          {userMessages.length > 0 ? (
+          {userMessages.length > 0 && ruleCanvasPhase === "building" ? (
             <div style={{ padding: "16px 4px" }}>
               <ThinkingIndicator />
             </div>
+          ) : null}
+          {userMessages.length > 0 && ruleCanvasPhase === "ready" ? (
+            <RuleBuildAgentResponse />
           ) : null}
         </div>
 

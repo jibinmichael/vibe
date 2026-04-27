@@ -1,16 +1,16 @@
 /**
- * Playground layout — wraps every page inside the (playground) route group
- * with a shared PlaygroundNav in the top-left. Adds no URL segment.
+ * Playground layout — wraps every page in the (playground) route group
+ * with a shared left sidebar for navigation. Adds no URL segment.
  */
 
 import type { ReactNode } from "react"
-import { PlaygroundNav } from "@/components/playground/PlaygroundNav"
+import { PlaygroundSidebar } from "@/components/playground/PlaygroundSidebar"
 
 export default function PlaygroundLayout({ children }: { children: ReactNode }) {
   return (
-    <>
-      <PlaygroundNav />
-      {children}
-    </>
+    <div className="playground-layout flex h-svh min-h-0 w-full">
+      <PlaygroundSidebar />
+      <div className="playground-layout-main min-h-0 min-w-0 flex-1 overflow-auto">{children}</div>
+    </div>
   )
 }

@@ -58,7 +58,7 @@ function CycleRow({
   return (
     <>
       <span
-        className={`min-w-0 flex-1 text-[14px] leading-snug ${phase === 0 ? "animate-pulse text-black/45" : "text-[rgba(0,0,0,0.88)]"}`}
+        className={`min-w-0 flex-1 text-[13px] leading-snug ${phase === 0 ? "animate-pulse text-black/45" : "text-[rgba(0,0,0,0.88)]"}`}
       >
         {phase === 0 ? loading : finalText}
       </span>

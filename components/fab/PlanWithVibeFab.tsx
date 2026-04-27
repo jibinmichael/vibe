@@ -13,8 +13,10 @@
  *   - onClick:   called when the pill is clicked
  *   - label:     override the default "Plan with Vibe" label
  *   - disabled:  optional disabled state (no pulse, muted glow)
- *   - zIndex:    optional z-index override (default 1000)
+ *   - zIndex:    optional z-index override (default 1000) — ignored for inline
  *   - status:    idle (blue glow + halo) or done (white pill, smile mouth)
+ *   - layout:    fixed = bottom-center viewport; inline = flow in normal layout
+ *   - compact:   smaller face + label and padding
  */
 
 type PlanWithVibeFabProps = {
@@ -23,6 +25,8 @@ type PlanWithVibeFabProps = {
   disabled?: boolean
   zIndex?: number
   status?: "idle" | "done"
+  layout?: "fixed" | "inline"
+  compact?: boolean
 }
 
 export function PlanWithVibeFab({
@@ -31,6 +35,8 @@ export function PlanWithVibeFab({
   disabled = false,
   zIndex = 1000,
   status = "idle",
+  layout = "fixed",
+  compact = false,
 }: PlanWithVibeFabProps) {
   return (
     <>
@@ -55,6 +61,40 @@ export function PlanWithVibeFab({
           animation: planVibeFabGlow 2.6s ease-in-out infinite;
           font-family: inherit;
         }
+        .plan-vibe-fab[data-layout="inline"] {
+          position: static;
+          left: auto;
+          bottom: auto;
+          transform: none;
+        }
+        .plan-vibe-fab[data-compact="true"] {
+          gap: 5px;
+          padding: 3px 12px 3px 5px;
+          box-shadow:
+            0 0 0 0 rgba(10,132,255,0.45),
+            0 0 10px 1px rgba(10,132,255,0.16),
+            0 2px 8px rgba(10,132,255,0.22);
+        }
+        .plan-vibe-fab[data-compact="true"] .plan-vibe-fab-face-wrap {
+          width: 20px;
+          height: 20px;
+        }
+        .plan-vibe-fab[data-compact="true"] .plan-vibe-fab-halo {
+          filter: blur(4px);
+        }
+        .plan-vibe-fab[data-compact="true"] .plan-vibe-fab-face {
+          gap: 2px;
+        }
+        .plan-vibe-fab[data-compact="true"] .plan-vibe-fab-eyes {
+          gap: 3px;
+        }
+        .plan-vibe-fab[data-compact="true"] .plan-vibe-fab-eye {
+          width: 3px;
+          height: 3px;
+        }
+        .plan-vibe-fab[data-compact="true"] .plan-vibe-fab-label {
+          font-size: 11px;
+        }
         .plan-vibe-fab[data-status="done"] {
           animation: none;
           background: #fff;
@@ -64,8 +104,11 @@ export function PlanWithVibeFab({
         .plan-vibe-fab:hover {
           filter: brightness(1.05);
         }
-        .plan-vibe-fab:active {
+        .plan-vibe-fab[data-layout="fixed"]:active {
           transform: translate(-50%, 1px);
+        }
+        .plan-vibe-fab[data-layout="inline"]:active {
+          transform: translateY(1px);
         }
         .plan-vibe-fab[data-disabled="true"] {
           background: rgba(10,132,255,0.55);
@@ -162,6 +205,14 @@ export function PlanWithVibeFab({
           92% { height: 1px; margin-top: 1.5px; }
           96% { height: 4px; margin-top: 0; }
         }
+        @keyframes planVibeFabBlinkCompact {
+          0%, 88%, 100% { height: 3px; margin-top: 0; }
+          92% { height: 1px; margin-top: 1px; }
+          96% { height: 3px; margin-top: 0; }
+        }
+        .plan-vibe-fab[data-compact="true"] .plan-vibe-fab-eye {
+          animation: planVibeFabBlinkCompact 3.5s infinite;
+        }
 
         .plan-vibe-fab-mouth {
           width: 10px;
@@ -206,7 +257,9 @@ export function PlanWithVibeFab({
         data-status={status}
         aria-label={label}
         aria-disabled={disabled}
-        style={{ zIndex }}
+        data-layout={layout}
+        data-compact={compact ? "true" : "false"}
+        style={layout === "inline" ? undefined : { zIndex }}
       >
         <span className="plan-vibe-fab-face-wrap" aria-hidden="true">
           {status === "idle" && <span className="plan-vibe-fab-halo" />}

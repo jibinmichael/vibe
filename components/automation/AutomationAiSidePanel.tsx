@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect, useRef, type ReactNode } from "react"
+
 import { Chatbox, type ChatboxChip } from "@/components/chat/Chatbox"
 import { ThinkingIndicator } from "@/components/chat/ThinkingIndicator"
 import { UserRow } from "@/components/chat/UserRow"
@@ -21,6 +23,16 @@ type AutomationAiSidePanelProps = {
   chip: ChatboxChip
   /** Extra class on aside for page-specific styling hooks */
   className?: string
+  /**
+   * When provided, shown below user messages instead of the default thinking row.
+   * Lets pages swap thinking vs. confirmation UI by phase.
+   */
+  streamFooter?: ReactNode
+  /**
+   * When defined and updated (e.g. after agent reply mounts), scrolls the stream
+   * to the bottom so the latest message stays in view.
+   */
+  streamAutoScrollKey?: string | number
 }
 
 /**
@@ -38,7 +50,30 @@ export function AutomationAiSidePanel({
   onSend,
   chip,
   className = "",
+  streamFooter,
+  streamAutoScrollKey,
 }: AutomationAiSidePanelProps) {
+  const streamRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (streamAutoScrollKey === undefined) return
+    const el = streamRef.current
+    if (!el) return
+    const scroll = () => {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
+    }
+    let raf2 = 0
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(scroll)
+    })
+    const t = window.setTimeout(scroll, 150)
+    return () => {
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
+      window.clearTimeout(t)
+    }
+  }, [streamAutoScrollKey])
+
   return (
     <aside
       className={`flex min-h-0 flex-col ${className}`}
@@ -111,6 +146,7 @@ export function AutomationAiSidePanel({
       </header>
 
       <div
+        ref={streamRef}
         className="flex flex-1 flex-col"
         style={{
           overflowY: "auto",
@@ -120,12 +156,16 @@ export function AutomationAiSidePanel({
         }}
       >
         {userMessages.map((text, i) => (
-          <UserRow key={`${i}-${text}`} text={text} />
+          <UserRow key={`${i}-${text}`} text={text} variant="automation" />
         ))}
         {userMessages.length > 0 ? (
-          <div style={{ padding: "16px 4px" }}>
-            <ThinkingIndicator />
-          </div>
+          streamFooter !== undefined ? (
+            streamFooter
+          ) : (
+            <div style={{ padding: "16px 4px" }}>
+              <ThinkingIndicator />
+            </div>
+          )
         ) : null}
       </div>
 
